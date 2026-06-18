@@ -13,10 +13,14 @@ add_executable(QuizApp WIN32
     GuiApp.cpp
 )
 
-target_compile_options(QuizApp PRIVATE
-    -finput-charset=UTF-8
-    -fexec-charset=UTF-8
-)
+if(MSVC)
+    target_compile_options(QuizApp PRIVATE /utf-8)
+else()
+    target_compile_options(QuizApp PRIVATE
+        -finput-charset=UTF-8
+        -fexec-charset=UTF-8
+    )
+endif()
 
 target_link_libraries(QuizApp PRIVATE
     comctl32
