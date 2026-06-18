@@ -1,0 +1,201 @@
+﻿{
+    "GeneratedAt":  "2026-06-18 11:09:00",
+    "Executable":  "D:\\Quiz App\\build\\QuizApp.exe",
+    "Total":  32,
+    "Passed":  32,
+    "Failed":  0,
+    "Results":  [
+                    {
+                        "Role":  "Chung",
+                        "Feature":  "File CSV mẫu",
+                        "Passed":  true,
+                        "Details":  "header=\u0027content,optionA,optionB,optionC,optionD,correctAnswer\u0027"
+                    },
+                    {
+                        "Role":  "Chung",
+                        "Feature":  "CSV fixture tiếng Việt",
+                        "Passed":  true,
+                        "Details":  "header=\u0027content,optionA,optionB,optionC,optionD,correctAnswer\u0027; rows=3"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Đăng nhập và phân quyền",
+                        "Passed":  true,
+                        "Details":  "dashboard=\u0027Bảng điều khiển Admin\u0027; responding=True"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Quản lý học sinh",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=1"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Quản lý giáo viên",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=1"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Tạo tài khoản giáo viên",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Ngân hàng câu hỏi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Danh sách đề thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Mở/đóng đề thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Kết quả tất cả học sinh",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=1"
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Hồ sơ và ba lớp nhập mật khẩu",
+                        "Passed":  true,
+                        "Details":  "Đủ họ tên, email, mật khẩu hiện tại, mật khẩu mới và xác nhận."
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Hướng dẫn sử dụng",
+                        "Passed":  true,
+                        "Details":  "Màn hình hướng dẫn mở được."
+                    },
+                    {
+                        "Role":  "Admin",
+                        "Feature":  "Đăng xuất",
+                        "Passed":  true,
+                        "Details":  "Quay về màn hình đăng nhập."
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Đăng nhập và phân quyền",
+                        "Passed":  true,
+                        "Details":  "dashboard=\u0027Bảng điều khiển Giáo viên\u0027; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Ngân hàng câu hỏi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Thêm câu hỏi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Nhập câu hỏi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Xóa câu hỏi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Danh sách đề thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Giáo viên tải đề thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Mở/đóng đề thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Kết quả tất cả học sinh",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=1"
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Hồ sơ và ba lớp nhập mật khẩu",
+                        "Passed":  true,
+                        "Details":  "Đủ họ tên, email, mật khẩu hiện tại, mật khẩu mới và xác nhận."
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Hướng dẫn sử dụng",
+                        "Passed":  true,
+                        "Details":  "Màn hình hướng dẫn mở được."
+                    },
+                    {
+                        "Role":  "Giáo viên",
+                        "Feature":  "Đăng xuất",
+                        "Passed":  true,
+                        "Details":  "Quay về màn hình đăng nhập."
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Đăng nhập và phân quyền",
+                        "Passed":  true,
+                        "Details":  "dashboard=\u0027Bảng điều khiển Học sinh\u0027; responding=True"
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Đề thi đang mở",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Làm bài thi",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=5"
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Lịch sử điểm",
+                        "Passed":  true,
+                        "Details":  "opened=True; responding=True; rows=1"
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Hồ sơ và ba lớp nhập mật khẩu",
+                        "Passed":  true,
+                        "Details":  "Đủ họ tên, email, mật khẩu hiện tại, mật khẩu mới và xác nhận."
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Hướng dẫn sử dụng",
+                        "Passed":  true,
+                        "Details":  "Màn hình hướng dẫn mở được."
+                    },
+                    {
+                        "Role":  "Học sinh",
+                        "Feature":  "Đăng xuất",
+                        "Passed":  true,
+                        "Details":  "Quay về màn hình đăng nhập."
+                    }
+                ]
+}

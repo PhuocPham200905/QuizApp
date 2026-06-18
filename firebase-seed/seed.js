@@ -42,7 +42,6 @@ async function seed() {
     optionD: "Co so du lieu",
     correctAnswer: "A",
     subject: "C++",
-    difficulty: "Easy",
   });
 
   await db.collection("questions").doc("q2").set({
@@ -53,7 +52,6 @@ async function seed() {
     optionD: "newclass",
     correctAnswer: "B",
     subject: "C++",
-    difficulty: "Easy",
   });
 
   await db.collection("questions").doc("q3").set({
@@ -64,7 +62,6 @@ async function seed() {
     optionD: "Tat chuong trinh",
     correctAnswer: "A",
     subject: "OOP",
-    difficulty: "Medium",
   });
 
   await db.collection("questions").doc("q4").set({
@@ -75,7 +72,6 @@ async function seed() {
     optionD: "<string>",
     correctAnswer: "C",
     subject: "C++",
-    difficulty: "Easy",
   });
 
   await db.collection("questions").doc("q5").set({
@@ -86,12 +82,12 @@ async function seed() {
     optionD: "Ve giao dien",
     correctAnswer: "A",
     subject: "OOP",
-    difficulty: "Medium",
   });
 
   await db.collection("exams").doc("e1").set({
     title: "De mau C++ OOP",
     durationMinutes: 30,
+    startAt: "2026-01-01 00:00",
     closeAt: "2026-12-31 23:59",
     examPassword: "oop123",
     createdBy: "t1",
