@@ -1,0 +1,301 @@
+    string questionsText(bool showAnswer) {
+        string text;
+        for (Question& question : data.getQuestions()) {
+            text += question.toText(showAnswer);
+        }
+        return text;
+    }
+
+    void showQuestions(bool showAnswer, string keyword = "", string subject = "",
+                       string difficulty = "") {
+        clearControls();
+        currentScreen = SCREEN_VIEW;
+        title("Ngân hàng câu hỏi");
+        if (currentUser && currentUser->getRole() == "teacher") addNav("Giáo viên");
+        else addNav("Quản trị viên");
+        label("Tìm kiếm", 260, 88, 80, 26);
+        edit(keyword, 345, 84, 235, 30, 6401);
+        label("Chủ đề", 595, 88, 65, 26);
+        edit(subject, 665, 84, 170, 30, 6402);
+        label("Độ khó", 850, 88, 65, 26);
+        edit(difficulty, 920, 84, 150, 30, 6403);
+        button("Lọc", 1085, 82, 85, 34, ID_QUESTION_FILTER);
+        questionListView(260, 128, 980, 492, showAnswer, keyword, subject, difficulty);
+        button("Về dashboard", 24, 535, 190, 40, ID_DASHBOARD);
+    }
+
+    void showAddQuestion() {
+        clearControls();
+        currentScreen = SCREEN_ADD_QUESTION;
+        title("Thêm câu hỏi");
+        int x1 = 280, x2 = 450, y = 100;
+        label("Nội dung", x1, y, 140, 26);
+        edit("", x2, y - 4, 390, 30, 4001);
+        y += 42;
+        label("Đáp án A", x1, y, 140, 26);
+        edit("", x2, y - 4, 390, 30, 4002);
+        y += 42;
+        label("Đáp án B", x1, y, 140, 26);
+        edit("", x2, y - 4, 390, 30, 4003);
+        y += 42;
+        label("Đáp án C", x1, y, 140, 26);
+        edit("", x2, y - 4, 390, 30, 4004);
+        y += 42;
+        label("Đáp án D", x1, y, 140, 26);
+        edit("", x2, y - 4, 390, 30, 4005);
+        y += 42;
+        label("Đáp án đúng", x1, y, 140, 26);
+        edit("", x2, y - 4, 80, 30, 4006);
+        y += 42;
+        label("Mon hoc", x1, y, 140, 26);
+        edit("", x2, y - 4, 220, 30, 4007);
+        y += 42;
+        label("Độ khó", x1, y, 140, 26);
+        edit("Trung bình", x2, y - 4, 220, 30, 4009);
+        y += 42;
+        label("Hình ảnh", x1, y, 140, 26);
+        edit("", x2, y - 4, 300, 30, 4008);
+        button("Chọn ảnh", x2 + 315, y - 4, 100, 32, ID_ADD_QUESTION_CHOOSE_IMAGE);
+        defaultButton("Them", x2, y + 48, 130, 38, ID_ADD_QUESTION_SUBMIT);
+        button("Về dashboard", x2 + 145, y + 48, 150, 38, ID_DASHBOARD);
+        setFocusTo(4001);
+    }
+
+    void submitAddQuestion() {
+        string content = getText(4001);
+        array<string, 4> options = {getText(4002), getText(4003), getText(4004), getText(4005)};
+        string correct = getText(4006);
+        string subject = getText(4007);
+        string difficulty = getText(4009);
+        string imagePath = getText(4008);
+        if (content.empty() || options[0].empty() || options[1].empty() || options[2].empty() ||
+            options[3].empty() || correct.empty() || subject.empty() || difficulty.empty()) {
+            error("Vui lòng nhập đầy đủ thông tin câu hỏi.");
+            return;
+        }
+        char answer = (char)toupper(correct[0]);
+        if (answer < 'A' || answer > 'D') {
+            error("Đáp án đúng phai la A, B, C hoac D.");
+            return;
+        }
+        data.addQuestion(content, options, answer, subject, difficulty, imagePath);
+        message("Đã thêm câu hỏi.");
+        showTeacherDashboard();
+    }
+
+    void showImportQuestions() {
+        clearControls();
+        currentScreen = SCREEN_IMPORT_QUESTIONS;
+        title("Nhập câu hỏi", "Chọn file CSV từ máy, dán CSV trực tiếp hoặc tải URL CSV công khai.");
+        addNav("Giáo viên");
+
+        label("Môn học/Chủ đề", 260, 88, 130, 26);
+        edit("C++ OOP", 400, 84, 210, 30, 8003);
+        label("URL CSV", 260, 126, 90, 26);
+        edit("", 355, 122, 255, 30, 8001);
+        button("Tải URL", 625, 122, 90, 32, ID_IMPORT_QUESTIONS_FROM_URL);
+        button("Chọn file", 725, 122, 90, 32, ID_IMPORT_QUESTIONS_FROM_FILE);
+        button("Mẫu CSV", 825, 122, 85, 32, ID_IMPORT_QUESTIONS_TEMPLATE);
+
+        edit(csvTemplateText(), 260, 170, 650, 318, 8002, false, true, false);
+
+        defaultButton("Nhập vào ngân hàng", 500, 515, 175, 38, ID_IMPORT_QUESTIONS_SUBMIT);
+        button("Về dashboard", 690, 515, 140, 38, ID_DASHBOARD);
+        setFocusTo(8002);
+    }
+
+    string csvTemplateText() {
+        return
+            "content,optionA,optionB,optionC,optionD,correctAnswer,difficulty\r\n"
+            "\"Trong lập trình hướng đối tượng, class được dùng để làm gì?\",\"Mô tả khuôn mẫu tạo đối tượng\",\"Chạy chương trình nhanh hơn\",\"Lưu file trên máy tính\",\"Kết nối Internet\",A,\"Dễ\"\r\n"
+            "\"Từ khóa nào dùng để khai báo class trong C++?\",\"object\",\"class\",\"define\",\"include\",B,\"Dễ\"\r\n"
+            "\"Hàm nào được gọi tự động khi đối tượng được tạo?\",\"Destructor\",\"Constructor\",\"Getter\",\"Setter\",B,\"Trung bình\"\r\n"
+            "\"Trong C++, thư viện nào thường dùng để làm việc với vector?\",\"<map>\",\"<array>\",\"<vector>\",\"<queue>\",C,\"Dễ\"\r\n"
+            "\"Đặc điểm nào là lợi ích của tính đóng gói?\",\"Ẩn chi tiết xử lý bên trong\",\"Làm mất dữ liệu\",\"Xóa toàn bộ biến\",\"Bắt buộc dùng biến global\",A,\"Trung bình\"\r\n"
+            "\"Nếu đáp án đúng là lựa chọn C, cột correctAnswer cần ghi gì?\",\"A\",\"B\",\"C\",\"D\",C,\"Dễ\"\r\n";
+    }
+
+    void showCsvTemplate() {
+        string samplePath = appDirectory() + "\\sample_questions.csv";
+        wstring widePath = utf8ToWide(samplePath);
+        HINSTANCE result = ShellExecuteW(window, L"open", widePath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        if ((INT_PTR)result > 32) {
+            message("Đã mở file sample_questions.csv. Giáo viên có thể sửa bằng Excel rồi bấm Chọn file để nạp vào app.");
+            return;
+        }
+
+        HWND csvEdit = GetDlgItem(window, 8002);
+        if (csvEdit != nullptr) {
+            setControlText(csvEdit, csvTemplateText());
+        }
+        message("Không mở được file sample_questions.csv. App đã hiển thị mẫu CSV trong ô nhập để sử dụng tạm.");
+    }
+
+    void loadImportQuestionsFromUrl() {
+        string url = getText(8001);
+        if (url.empty()) {
+            error("Vui lòng nhập URL CSV.");
+            return;
+        }
+
+        string csvText;
+        if (!data.downloadTextFromUrl(url, csvText)) {
+            error("Không tải được CSV từ URL. Vui lòng kiểm tra đường dẫn và kết nối Internet.");
+            return;
+        }
+
+        HWND csvEdit = GetDlgItem(window, 8002);
+        if (csvEdit != nullptr) {
+            setControlText(csvEdit, csvText);
+        }
+        message("Đã tải CSV. Kiểm tra nội dung rồi bấm Nhập vào ngân hàng.");
+    }
+
+    void loadImportQuestionsFromFile() {
+        wchar_t fileName[MAX_PATH] = L"";
+        OPENFILENAMEW dialog = {};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = window;
+        dialog.lpstrFilter = L"CSV Files (*.csv)\0*.csv\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+        dialog.lpstrFile = fileName;
+        dialog.nMaxFile = MAX_PATH;
+        dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+        dialog.lpstrDefExt = L"csv";
+
+        if (!GetOpenFileNameW(&dialog)) {
+            return;
+        }
+
+        loadCsvFromPath(wideToUtf8(fileName));
+    }
+
+    void loadDroppedCsv(HDROP drop) {
+        if (currentScreen != SCREEN_IMPORT_QUESTIONS) {
+            DragFinish(drop);
+            error("Hay vao man hinh Nhập câu hỏi roi keo-tha file CSV vao app.");
+            return;
+        }
+
+        wchar_t fileName[MAX_PATH] = L"";
+        if (DragQueryFileW(drop, 0, fileName, MAX_PATH) == 0) {
+            DragFinish(drop);
+            return;
+        }
+
+        DragFinish(drop);
+        loadCsvFromPath(wideToUtf8(fileName));
+    }
+
+    void loadCsvFromPath(string filePath) {
+        ifstream file(filePath, ios::binary);
+        if (!file) {
+            error("Không mở được file CSV đã chọn.");
+            return;
+        }
+
+        string csvText((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+        if (csvText.size() >= 3 &&
+            (unsigned char)csvText[0] == 0xEF &&
+            (unsigned char)csvText[1] == 0xBB &&
+            (unsigned char)csvText[2] == 0xBF) {
+            csvText.erase(0, 3);
+        }
+
+        HWND csvEdit = GetDlgItem(window, 8002);
+        if (csvEdit != nullptr) {
+            setControlText(csvEdit, csvText);
+        }
+
+        message("Đã nạp file CSV. Kiểm tra nội dung rồi bấm Nhập vào ngân hàng.");
+    }
+
+    void chooseExamFile() {
+        wchar_t fileName[MAX_PATH] = L"";
+        OPENFILENAMEW dialog = {};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = window;
+        dialog.lpstrFilter =
+            L"File đề thi (*.docx;*.pdf;*.jpg;*.jpeg;*.png)\0*.docx;*.pdf;*.jpg;*.jpeg;*.png\0"
+            L"Word/PDF (*.docx;*.pdf)\0*.docx;*.pdf\0"
+            L"Anh (*.jpg;*.jpeg;*.png)\0*.jpg;*.jpeg;*.png\0"
+            L"Tat ca file (*.*)\0*.*\0";
+        dialog.lpstrFile = fileName;
+        dialog.nMaxFile = MAX_PATH;
+        dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+        if (!GetOpenFileNameW(&dialog)) {
+            return;
+        }
+
+        HWND pathEdit = GetDlgItem(window, 5007);
+        if (pathEdit != nullptr) {
+            setControlText(pathEdit, wideToUtf8(fileName));
+        }
+    }
+
+    void chooseQuestionImage() {
+        wchar_t fileName[MAX_PATH] = L"";
+        OPENFILENAMEW dialog = {};
+        dialog.lStructSize = sizeof(dialog);
+        dialog.hwndOwner = window;
+        dialog.lpstrFilter =
+            L"Image Files (*.jpg;*.jpeg;*.png;*.bmp)\0*.jpg;*.jpeg;*.png;*.bmp\0"
+            L"All Files (*.*)\0*.*\0";
+        dialog.lpstrFile = fileName;
+        dialog.nMaxFile = MAX_PATH;
+        dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+        if (!GetOpenFileNameW(&dialog)) {
+            return;
+        }
+
+        HWND pathEdit = GetDlgItem(window, 4008);
+        if (pathEdit != nullptr) {
+            setControlText(pathEdit, wideToUtf8(fileName));
+        }
+    }
+
+    void submitImportQuestions() {
+        string subject = getText(8003);
+        string csvText = getText(8002);
+        if (subject.empty()) {
+            error("Vui lòng nhập Môn học/Chủ đề cho bộ câu hỏi.");
+            return;
+        }
+        if (csvText.empty()) {
+            error("Vui lòng dán CSV hoặc tải CSV từ URL.");
+            return;
+        }
+
+        string importMessage;
+        int importedCount = data.importQuestionsFromCsv(csvText, subject, importMessage);
+        if (importedCount <= 0) {
+            error("Không có câu hỏi hợp lệ để nhập.\r\n\r\nĐịnh dạng: content,optionA,optionB,optionC,optionD,correctAnswer");
+            return;
+        }
+
+        message(importMessage);
+        showTeacherDashboard();
+    }
+
+    void showDeleteQuestion() {
+        clearControls();
+        currentScreen = SCREEN_DELETE_QUESTION;
+        title("Xóa câu hỏi");
+        questionListView(260, 92, 980, 420, true);
+        label("Mã câu hỏi cần xóa", 300, 545, 170, 26);
+        edit("", 480, 541, 180, 30, 4101);
+        defaultButton("Xóa", 480, 595, 110, 38, ID_DELETE_QUESTION_SUBMIT);
+        button("Về dashboard", 605, 595, 150, 38, ID_DASHBOARD);
+        setFocusTo(4101);
+    }
+
+    void submitDeleteQuestion() {
+        string id = getText(4101);
+        if (data.deleteQuestion(id)) {
+            message("Đã xóa câu hỏi.");
+            showTeacherDashboard();
+        } else {
+            error("Không tìm thấy câu hỏi.");
+        }
+    }

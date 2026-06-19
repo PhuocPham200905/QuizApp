@@ -48,6 +48,21 @@ public static class QuizAppTestInterop
     public static extern int GetDlgCtrlID(IntPtr hwnd);
 
     [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
     public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
@@ -117,6 +132,47 @@ public static class QuizAppTestInterop
         }, IntPtr.Zero);
         return found;
     }
+
+    public static string[] OverlappingButtons(IntPtr parent)
+    {
+        var buttons = new List<Tuple<IntPtr, string, RECT>>();
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            var className = new StringBuilder(80);
+            GetClassName(hwnd, className, className.Capacity);
+            if (className.ToString().Equals("Button", StringComparison.OrdinalIgnoreCase) &&
+                IsWindowVisible(hwnd))
+            {
+                var text = new StringBuilder(256);
+                GetWindowText(hwnd, text, text.Capacity);
+                RECT rect;
+                if (GetWindowRect(hwnd, out rect))
+                {
+                    buttons.Add(Tuple.Create(hwnd, text.ToString(), rect));
+                }
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        var overlaps = new List<string>();
+        for (int i = 0; i < buttons.Count; i++)
+        {
+            for (int j = i + 1; j < buttons.Count; j++)
+            {
+                RECT left = buttons[i].Item3;
+                RECT right = buttons[j].Item3;
+                bool intersects = left.Left < right.Right &&
+                                  left.Right > right.Left &&
+                                  left.Top < right.Bottom &&
+                                  left.Bottom > right.Top;
+                if (intersects)
+                {
+                    overlaps.Add("'" + buttons[i].Item2 + "' <> '" + buttons[j].Item2 + "'");
+                }
+            }
+        }
+        return overlaps.ToArray();
+    }
 }
 '@
 
@@ -179,7 +235,7 @@ function Start-LoggedInApp {
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         Stop-QuizApp
         $script:activeProcess = Start-Process -FilePath $Executable -PassThru
-        Start-Sleep -Seconds 8
+        Start-Sleep -Seconds 12
         $script:activeProcess.Refresh()
 
         [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
@@ -205,10 +261,11 @@ function Test-Screen {
         [int]$CommandId,
         [string]$ExpectedTitle,
         [int[]]$ExpectedControlIds = @(),
+        [int]$DelayMilliseconds = 700,
         [switch]$RecordRows
     )
 
-    Invoke-AppCommand $CommandId
+    Invoke-AppCommand $CommandId $DelayMilliseconds
     $opened = Test-VisibleText $ExpectedTitle
     $missingIds = @(
         $ExpectedControlIds |
@@ -224,13 +281,20 @@ function Test-Screen {
     } else {
         0
     }
-    $passed = $opened -and $missingIds.Count -eq 0 -and $script:activeProcess.Responding
+    $overlaps = [QuizAppTestInterop]::OverlappingButtons(
+        $script:activeProcess.MainWindowHandle
+    )
+    $passed = $opened -and $missingIds.Count -eq 0 -and
+              $overlaps.Count -eq 0 -and $script:activeProcess.Responding
     $details = "opened=$opened; responding=$($script:activeProcess.Responding)"
     if ($RecordRows) {
         $details += "; rows=$rows"
     }
     if ($missingIds.Count -gt 0) {
         $details += "; missingControlIds=$($missingIds -join ',')"
+    }
+    if ($overlaps.Count -gt 0) {
+        $details += "; overlappingButtons=$($overlaps -join ' | ')"
     }
     Add-TestResult $Role $ExpectedTitle $passed $details
     Invoke-AppCommand 1050 450
@@ -284,6 +348,7 @@ function Test-Role {
             -CommandId $screen.Command `
             -ExpectedTitle $screen.Title `
             -ExpectedControlIds $screen.Controls `
+            -DelayMilliseconds $(if ($screen.Delay) { $screen.Delay } else { 700 }) `
             -RecordRows:$screen.Rows
     }
 
@@ -310,33 +375,36 @@ try {
 
     $sampleHeader = (Get-Content -Encoding UTF8 $sampleCsv -TotalCount 1)
     $fixtureHeader = (Get-Content -Encoding UTF8 $fixtureCsv -TotalCount 1)
-    $expectedHeader = "content,optionA,optionB,optionC,optionD,correctAnswer"
+    $expectedHeader = "content,optionA,optionB,optionC,optionD,correctAnswer,difficulty"
+    $legacyHeader = "content,optionA,optionB,optionC,optionD,correctAnswer"
     Add-TestResult "Chung" "File CSV mẫu" ($sampleHeader -eq $expectedHeader) (
         "header='$sampleHeader'"
     )
-    Add-TestResult "Chung" "CSV fixture tiếng Việt" ($fixtureHeader -eq $expectedHeader) (
+    Add-TestResult "Chung" "CSV fixture tiếng Việt" ($fixtureHeader -eq $legacyHeader) (
         "header='$fixtureHeader'; rows=$((Import-Csv $fixtureCsv).Count)"
     )
 
     $adminScreens = @(
-        @{ Command = 1010; Title = "Quản lý học sinh"; Controls = @(6101, 6102, 6103, 6104); Rows = $true },
-        @{ Command = 1011; Title = "Quản lý giáo viên"; Controls = @(6201, 6202, 6203, 6204); Rows = $true },
+        @{ Command = 1010; Title = "Quản lý học sinh"; Controls = @(6101, 6102, 6103, 6104); Rows = $true; Delay = 5000 },
+        @{ Command = 1011; Title = "Quản lý giáo viên"; Controls = @(6201, 6202, 6203, 6204); Rows = $true; Delay = 5000 },
         @{ Command = 1012; Title = "Tạo tài khoản giáo viên"; Controls = @(3001, 3002, 3003, 3004); Rows = $false },
-        @{ Command = 1013; Title = "Ngân hàng câu hỏi"; Controls = @(); Rows = $false },
+        @{ Command = 1013; Title = "Ngân hàng câu hỏi"; Controls = @(6401, 6402, 6403); Rows = $false },
         @{ Command = 1014; Title = "Danh sách đề thi"; Controls = @(); Rows = $true },
         @{ Command = 1015; Title = "Mở/đóng đề thi"; Controls = @(5101, 5102); Rows = $true },
-        @{ Command = 1016; Title = "Kết quả tất cả học sinh"; Controls = @(); Rows = $true }
+        @{ Command = 1016; Title = "Kết quả tất cả học sinh"; Controls = @(6501, 6502); Rows = $true },
+        @{ Command = 1120; Title = "Giám sát chống gian lận"; Controls = @(6601); Rows = $false; Delay = 4000 }
     )
 
     $teacherScreens = @(
-        @{ Command = 1017; Title = "Ngân hàng câu hỏi"; Controls = @(); Rows = $false },
-        @{ Command = 1018; Title = "Thêm câu hỏi"; Controls = @(4001, 4002, 4003, 4004, 4005, 4006, 4007, 4008); Rows = $false },
+        @{ Command = 1017; Title = "Ngân hàng câu hỏi"; Controls = @(6401, 6402, 6403); Rows = $false },
+        @{ Command = 1018; Title = "Thêm câu hỏi"; Controls = @(4001, 4002, 4003, 4004, 4005, 4006, 4007, 4008, 4009); Rows = $false },
         @{ Command = 1019; Title = "Nhập câu hỏi"; Controls = @(8001, 8002, 8003); Rows = $false },
         @{ Command = 1020; Title = "Xóa câu hỏi"; Controls = @(4101); Rows = $false },
         @{ Command = 1021; Title = "Danh sách đề thi"; Controls = @(); Rows = $true },
-        @{ Command = 1022; Title = "Giáo viên tải đề thi"; Controls = @(5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 5010); Rows = $false },
+        @{ Command = 1022; Title = "Giáo viên tải đề thi"; Controls = @(5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 5010, 5011, 5012, 5013); Rows = $false },
         @{ Command = 1023; Title = "Mở/đóng đề thi"; Controls = @(5101, 5102); Rows = $true },
-        @{ Command = 1024; Title = "Kết quả tất cả học sinh"; Controls = @(); Rows = $true }
+        @{ Command = 1024; Title = "Kết quả tất cả học sinh"; Controls = @(6501, 6502); Rows = $true },
+        @{ Command = 1100; Title = "Quản lý đề thi"; Controls = @(6301, 6302, 6303, 6304, 6305, 6306, 6307, 6308, 6309, 6310, 6311, 6312); Rows = $true }
     )
 
     $studentScreens = @(
@@ -345,8 +413,8 @@ try {
         @{ Command = 1027; Title = "Lịch sử điểm"; Controls = @(); Rows = $true }
     )
 
-    Test-Role "Admin" $AdminEmail $AdminPassword "Bảng điều khiển Admin" $adminScreens
     Test-Role "Giáo viên" $TeacherEmail $TeacherPassword "Bảng điều khiển Giáo viên" $teacherScreens
+    Test-Role "Admin" $AdminEmail $AdminPassword "Bảng điều khiển Admin" $adminScreens
     Test-Role "Học sinh" $StudentEmail $StudentPassword "Bảng điều khiển Học sinh" $studentScreens
 }
 finally {

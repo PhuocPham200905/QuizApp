@@ -1,0 +1,26 @@
+content,optionA,optionB,optionC,optionD,correctAnswer
+"Kết quả của 2 + 3 là bao nhiêu?","4","5","6","7",B
+"Kết quả của 7 - 4 là bao nhiêu?","2","3","4","5",B
+"Số nào lớn hơn 8?","6","7","8","9",D
+"Số nào bé hơn 5?","7","6","4","8",C
+"Kết quả của 5 + 5 là bao nhiêu?","8","9","10","11",C
+"Kết quả của 10 - 6 là bao nhiêu?","3","4","5","6",B
+"Số liền sau của số 11 là số nào?","10","11","12","13",C
+"Số liền trước của số 9 là số nào?","7","8","9","10",B
+"Điền số thích hợp: 3 + ... = 7","2","3","4","5",C
+"Điền số thích hợp: ... - 2 = 6","6","7","8","9",C
+"Kết quả của 6 + 3 là bao nhiêu?","7","8","9","10",C
+"Kết quả của 9 - 5 là bao nhiêu?","3","4","5","6",B
+"Trong các số 2 5 1 4 số lớn nhất là số nào?","1","2","4","5",D
+"Trong các số 8 6 9 7 số bé nhất là số nào?","6","7","8","9",A
+"Kết quả của 4 + 4 là bao nhiêu?","6","7","8","9",C
+"Kết quả của 12 - 2 là bao nhiêu?","8","9","10","11",C
+"Dấu thích hợp trong phép so sánh 7 ... 5 là gì?","<",">","=","+",B
+"Dấu thích hợp trong phép so sánh 4 ... 4 là gì?","<",">","=","-",C
+"Có 3 quả táo thêm 2 quả táo thì có tất cả bao nhiêu quả?","4","5","6","7",B
+"Có 8 chiếc kẹo cho đi 3 chiếc thì còn lại bao nhiêu chiếc?","4","5","6","7",B
+"Hình có ba cạnh được gọi là hình gì?","Hình tròn","Hình vuông","Hình tam giác","Hình chữ nhật",C
+"Hình nào không có cạnh?","Hình tròn","Hình vuông","Hình tam giác","Hình chữ nhật",A
+"Một tuần có bao nhiêu ngày?","5 ngày","6 ngày","7 ngày","8 ngày",C
+"Số 15 gồm một chục và mấy đơn vị?","3 đơn vị","4 đơn vị","5 đơn vị","6 đơn vị",C
+"Dãy số nào được sắp xếp từ bé đến lớn?","4 3 2 1","1 2 3 4","2 1 4 3","3 4 1 2",B

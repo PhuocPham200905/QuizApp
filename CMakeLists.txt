@@ -11,6 +11,42 @@ find_package(ZLIB REQUIRED)
 add_executable(QuizApp WIN32
     main.cpp
     GuiApp.cpp
+    GuiApp.h
+    src/Common.h
+    src/models/Models.h
+    src/services/FirebaseService.h
+    src/data/QuizData.h
+    src/ui/ControlIds.h
+    src/ui/features/GuiCore.inl
+    src/ui/features/AuthScreens.inl
+    src/ui/features/DashboardScreens.inl
+    src/ui/features/QuestionScreens.inl
+    src/ui/features/ExamScreens.inl
+    src/ui/features/ResultScreens.inl
+    src/ui/features/GuiUtilities.inl
+)
+
+source_group("Models" FILES
+    src/models/Models.h
+)
+
+source_group("Data and Services" FILES
+    src/services/FirebaseService.h
+    src/data/QuizData.h
+)
+
+source_group("UI Features" FILES
+    src/ui/features/AuthScreens.inl
+    src/ui/features/DashboardScreens.inl
+    src/ui/features/QuestionScreens.inl
+    src/ui/features/ExamScreens.inl
+    src/ui/features/ResultScreens.inl
+)
+
+source_group("UI Core" FILES
+    src/ui/ControlIds.h
+    src/ui/features/GuiCore.inl
+    src/ui/features/GuiUtilities.inl
 )
 
 if(MSVC)
