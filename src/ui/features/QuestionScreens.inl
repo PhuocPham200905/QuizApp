@@ -6,6 +6,237 @@
         return text;
     }
 
+    void showAiQuestionGenerator() {
+        if (currentUser == nullptr || currentUser->getRole() != "teacher") {
+            error("Chỉ giáo viên mới được dùng chức năng tạo câu hỏi bằng AI.");
+            showCurrentDashboard();
+            return;
+        }
+
+        clearControls();
+        currentScreen = SCREEN_AI_QUESTION_GENERATOR;
+        title("Tạo câu hỏi bằng AI", "Nhập yêu cầu, xem preview, chỉnh JSON nếu cần rồi lưu vào ngân hàng câu hỏi.");
+        addNav("Giáo viên");
+
+        if (aiQuestionRequest.subject.empty()) aiQuestionRequest.subject = currentUser->getClassName();
+        if (aiQuestionRequest.grade.empty()) aiQuestionRequest.grade = "12";
+        if (aiQuestionRequest.difficulty.empty()) aiQuestionRequest.difficulty = "Trung bình";
+        if (aiQuestionRequest.count <= 0) aiQuestionRequest.count = 5;
+
+        RECT client = {};
+        GetClientRect(window, &client);
+        int x = 260;
+        int y = 82;
+        int panelWidth = min(900, max(700, (int)client.right - x - 18));
+        label("Môn học", x, y, 68, 26);
+        edit(aiQuestionRequest.subject, x + 72, y - 4, 140, 30, 8501);
+        label("Lớp/khối", x + 225, y, 68, 26);
+        edit(aiQuestionRequest.grade, x + 295, y - 4, 70, 30, 8502);
+        label("Độ khó", x + 380, y, 68, 26);
+        edit(aiQuestionRequest.difficulty, x + 450, y - 4, 110, 30, 8504);
+        label("Số câu", x + 575, y, 58, 26);
+        edit(to_string(aiQuestionRequest.count), x + 635, y - 4, 60, 30, 8505);
+
+        y += 40;
+        label("Chủ đề", x, y, 68, 26);
+        edit(aiQuestionRequest.topic, x + 72, y - 4, 300, 30, 8503);
+        label("Ghi chú", x + 390, y, 63, 26);
+        edit(aiQuestionRequest.extraNotes, x + 455, y - 4,
+             max(180, panelWidth - 455), 30, 8506);
+
+        defaultButton("Sinh câu hỏi", x, y + 40, 130, 34, ID_AI_GENERATE_QUESTIONS);
+        button("Cập nhật preview", x + 140, y + 40, 140, 34, ID_AI_REFRESH_PREVIEW);
+        button("Lưu tất cả", x + 290, y + 40, 105, 34, ID_AI_SAVE_ALL);
+        label("Câu số", x + 405, y + 45, 58, 24);
+        edit("1", x + 465, y + 42, 45, 30, 8507);
+        button("Lưu 1 câu", x + 520, y + 40, 105, 34, ID_AI_SAVE_ONE);
+        button("Quay lại", x + 635, y + 40, 85, 34, ID_DASHBOARD);
+
+        string status = aiQuestionStatus.empty()
+                            ? "Mặc định dùng mock để demo. Đặt QUIZAPP_AI_MODE=real cùng endpoint/API key để gọi AI thật."
+                            : aiQuestionStatus;
+        edit(status, x, y + 82, panelWidth, 38, 8508, false, true, true);
+
+        aiQuestionDraftListView(x, y + 128, panelWidth, 145);
+
+        label("JSON có thể chỉnh sửa", x, y + 282, 210, 24);
+        edit(aiQuestionService.draftsToJson(generatedQuestionDrafts),
+             x, y + 308, panelWidth, 95, 8509, false, true, false);
+        setFocusTo(8503);
+    }
+
+    void submitGenerateAiQuestions() {
+        if (currentUser == nullptr || currentUser->getRole() != "teacher") {
+            error("Chỉ giáo viên mới được dùng chức năng tạo câu hỏi bằng AI.");
+            return;
+        }
+
+        aiQuestionRequest.subject = getText(8501);
+        aiQuestionRequest.grade = getText(8502);
+        aiQuestionRequest.topic = getText(8503);
+        aiQuestionRequest.difficulty = getText(8504);
+        aiQuestionRequest.extraNotes = getText(8506);
+        aiQuestionRequest.count = atoi(getText(8505).c_str());
+
+        if (aiQuestionRequest.subject.empty() || aiQuestionRequest.grade.empty() ||
+            aiQuestionRequest.topic.empty() || aiQuestionRequest.difficulty.empty()) {
+            error("Vui lòng nhập môn học, lớp/khối, chủ đề và độ khó.");
+            return;
+        }
+        if (aiQuestionRequest.count <= 0 || aiQuestionRequest.count > 20) {
+            error("Số lượng câu phải từ 1 đến 20.");
+            return;
+        }
+
+        HWND statusBox = GetDlgItem(window, 8508);
+        if (statusBox != nullptr) {
+            setControlText(statusBox, "Đang sinh câu hỏi, vui lòng chờ...");
+            UpdateWindow(window);
+        }
+
+        AIQuestionResult result = aiQuestionService.generateQuestions(aiQuestionRequest);
+        if (!result.success) {
+            aiQuestionStatus = "Không sinh được câu hỏi: " + result.message;
+            generatedQuestionDrafts.clear();
+            showAiQuestionGenerator();
+            error(aiQuestionStatus);
+            return;
+        }
+
+        generatedQuestionDrafts = result.questions;
+        aiQuestionStatus = result.message + " Số câu: " + to_string((int)generatedQuestionDrafts.size()) + ".";
+        showAiQuestionGenerator();
+    }
+
+    void refreshAiPreviewFromJson() {
+        string jsonText = getText(8509);
+        vector<GeneratedQuestionDraft> parsedQuestions;
+        string parseError;
+        if (!aiQuestionService.parseGeneratedQuestions(jsonText, parsedQuestions, parseError)) {
+            error("Không cập nhật được preview.\r\n" + parseError);
+            return;
+        }
+
+        generatedQuestionDrafts = parsedQuestions;
+        aiQuestionStatus = "Đã cập nhật preview từ JSON. Số câu: " +
+                           to_string((int)generatedQuestionDrafts.size()) + ".";
+        showAiQuestionGenerator();
+    }
+
+    void saveAllAiQuestions() {
+        if (!syncAiDraftsFromEditor()) {
+            return;
+        }
+        if (generatedQuestionDrafts.empty()) {
+            error("Chưa có câu hỏi AI để lưu.");
+            return;
+        }
+
+        int savedCount = 0;
+        for (const GeneratedQuestionDraft& draft : generatedQuestionDrafts) {
+            if (saveAiDraft(draft)) {
+                savedCount++;
+            }
+        }
+
+        aiQuestionStatus = "Đã lưu " + to_string(savedCount) + " câu vào ngân hàng câu hỏi.";
+        message(aiQuestionStatus);
+        showQuestions(true, "", aiQuestionRequest.subject, "");
+    }
+
+    void saveOneAiQuestion() {
+        if (!syncAiDraftsFromEditor()) {
+            return;
+        }
+        int index = atoi(getText(8507).c_str());
+        if (index < 1 || index > (int)generatedQuestionDrafts.size()) {
+            error("Số thứ tự câu cần lưu không hợp lệ.");
+            return;
+        }
+
+        if (!saveAiDraft(generatedQuestionDrafts[index - 1])) {
+            return;
+        }
+
+        aiQuestionStatus = "Đã lưu câu số " + to_string(index) + " vào ngân hàng câu hỏi.";
+        message(aiQuestionStatus);
+        showAiQuestionGenerator();
+    }
+
+    bool syncAiDraftsFromEditor() {
+        string jsonText = getText(8509);
+        if (jsonText.empty()) {
+            return true;
+        }
+
+        vector<GeneratedQuestionDraft> parsedQuestions;
+        string parseError;
+        if (!aiQuestionService.parseGeneratedQuestions(jsonText, parsedQuestions, parseError)) {
+            error("JSON preview chưa hợp lệ nên chưa thể lưu.\r\n" + parseError);
+            return false;
+        }
+
+        generatedQuestionDrafts = parsedQuestions;
+        return true;
+    }
+
+    bool saveAiDraft(const GeneratedQuestionDraft& draft) {
+        string validationError;
+        if (!aiQuestionService.validateDraft(draft, validationError)) {
+            error("Câu hỏi AI chưa hợp lệ: " + validationError);
+            return false;
+        }
+
+        data.addQuestion(draft.content, draft.options, draft.correctAnswer,
+                         draft.subject, draft.difficulty);
+        return true;
+    }
+
+    HWND aiQuestionDraftListView(int x, int y, int w, int h) {
+        HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+                                   WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+                                   x, y, w, h, window, nullptr, instance, nullptr);
+        styleModernListView(list, 34);
+        controls.push_back(list);
+
+        addListColumn(list, 0, "#", 40, LVCFMT_CENTER);
+        addListColumn(list, 1, "Nội dung", max(220, w - 460));
+        addListColumn(list, 2, "A", 70);
+        addListColumn(list, 3, "B", 70);
+        addListColumn(list, 4, "C", 70);
+        addListColumn(list, 5, "D", 70);
+        addListColumn(list, 6, "Đáp án", 60, LVCFMT_CENTER);
+        addListColumn(list, 7, "Độ khó", 80, LVCFMT_CENTER);
+
+        for (int row = 0; row < (int)generatedQuestionDrafts.size(); row++) {
+            const GeneratedQuestionDraft& draft = generatedQuestionDrafts[row];
+            vector<string> values = {
+                to_string(row + 1),
+                draft.content,
+                draft.options[0],
+                draft.options[1],
+                draft.options[2],
+                draft.options[3],
+                string(1, draft.correctAnswer),
+                draft.difficulty
+            };
+
+            wstring firstValue = utf8ToWide(values[0]);
+            LVITEMW item = {};
+            item.mask = LVIF_TEXT;
+            item.iItem = row;
+            item.iSubItem = 0;
+            item.pszText = const_cast<wchar_t*>(firstValue.c_str());
+            SendMessageW(list, LVM_INSERTITEMW, 0, (LPARAM)&item);
+
+            for (int col = 1; col < (int)values.size(); col++) {
+                setListText(list, row, col, values[col]);
+            }
+        }
+
+        return list;
+    }
+
     void showQuestions(bool showAnswer, string keyword = "", string subject = "",
                        string difficulty = "") {
         clearControls();
@@ -20,7 +251,10 @@
         label("Độ khó", 850, 88, 65, 26);
         edit(difficulty, 920, 84, 150, 30, 6403);
         button("Lọc", 1085, 82, 85, 34, ID_QUESTION_FILTER);
-        questionListView(260, 128, 980, 492, showAnswer, keyword, subject, difficulty);
+        questionListView(260, 128, 980, 420, showAnswer, keyword, subject, difficulty);
+        if (currentUser && currentUser->getRole() == "teacher") {
+            button("Tạo câu hỏi bằng AI", 260, 565, 180, 36, ID_TEACHER_AI_QUESTIONS);
+        }
         button("Về dashboard", 24, 535, 190, 40, ID_DASHBOARD);
     }
 

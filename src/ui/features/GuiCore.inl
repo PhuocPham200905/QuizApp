@@ -531,6 +531,7 @@ private:
         else if (id == ID_ADMIN_AUDIT) showAntiCheatMonitor();
         else if (id == ID_TEACHER_QUESTIONS) showQuestions(true);
         else if (id == ID_TEACHER_ADD_QUESTION) showAddQuestion();
+        else if (id == ID_TEACHER_AI_QUESTIONS) showAiQuestionGenerator();
         else if (id == ID_TEACHER_IMPORT_QUESTIONS) showImportQuestions();
         else if (id == ID_TEACHER_DELETE_QUESTION) showDeleteQuestion();
         else if (id == ID_TEACHER_EXAMS) showExams();
@@ -548,6 +549,10 @@ private:
         else if (id == ID_IMPORT_QUESTIONS_FROM_URL) loadImportQuestionsFromUrl();
         else if (id == ID_IMPORT_QUESTIONS_FROM_FILE) loadImportQuestionsFromFile();
         else if (id == ID_IMPORT_QUESTIONS_TEMPLATE) showCsvTemplate();
+        else if (id == ID_AI_GENERATE_QUESTIONS) submitGenerateAiQuestions();
+        else if (id == ID_AI_REFRESH_PREVIEW) refreshAiPreviewFromJson();
+        else if (id == ID_AI_SAVE_ONE) saveOneAiQuestion();
+        else if (id == ID_AI_SAVE_ALL) saveAllAiQuestions();
         else if (id == ID_DELETE_QUESTION_SUBMIT) submitDeleteQuestion();
         else if (id == ID_CREATE_EXAM_CHOOSE_FILE) chooseExamFile();
         else if (id == ID_CREATE_EXAM_SUBMIT) submitCreateExam();
@@ -1445,6 +1450,9 @@ private:
                 return true;
             case SCREEN_ADD_QUESTION:
                 submitAddQuestion();
+                return true;
+            case SCREEN_AI_QUESTION_GENERATOR:
+                submitGenerateAiQuestions();
                 return true;
             case SCREEN_IMPORT_QUESTIONS:
                 submitImportQuestions();

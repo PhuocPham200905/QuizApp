@@ -91,6 +91,29 @@ Khi học sinh bấm nút **Mở file đề**, lần chuyển cửa sổ do chí
 không bị tính là vi phạm. Các lần rời màn hình không bắt đầu từ nút này vẫn
 được ghi vào nhật ký chống gian lận.
 
+## Tạo câu hỏi bằng AI
+
+Giáo viên có thể chọn **Tạo bằng AI** trên bảng điều khiển để sinh câu hỏi,
+xem trước, chỉnh JSON và lưu từng câu hoặc toàn bộ vào ngân hàng câu hỏi.
+
+Chạy thử không cần API key:
+
+```powershell
+setx QUIZAPP_AI_MODE "mock"
+```
+
+Để sử dụng Groq thật, tạo API key trong tài khoản Groq rồi chạy:
+
+```powershell
+setx GROQ_API_KEY "api_key_thật_của_bạn"
+setx QUIZAPP_AI_MODE "real"
+```
+
+Đóng và mở lại PowerShell/VS Code/App sau khi dùng `setx`, vì biến môi trường
+chỉ có hiệu lực với tiến trình được mở sau đó. Không ghi API key trực tiếp vào
+source code, file `.env`, ảnh chụp hoặc commit Git. `.env` và `.env.*` đã được
+chặn bởi `.gitignore`.
+
 Nếu cần chạy script seed:
 
 ```powershell

@@ -7,54 +7,45 @@ protected:
     string userId;
     string name;
     string email;
-    string password;
+    string passwordHash;
     string role;
     string className;
 
 public:
-    User(string userId, string name, string email, string password, string role, string className)
-        : userId(userId), name(name), email(email), password(password), role(role), className(className) {}
+    User(string userId, string name, string email, string password, string role, string className);
+    virtual ~User();
 
-    virtual ~User() {}
+    string getUserId() const;
+    string getName() const;
+    string getEmail() const;
+    string getPassword() const;
+    string getPasswordHash() const;
+    string getRole() const;
+    string getClassName() const;
 
-    string getUserId() const { return userId; }
-    string getName() const { return name; }
-    string getEmail() const { return email; }
-    string getPassword() const { return password; }
-    string getRole() const { return role; }
-    string getClassName() const { return className; }
+    void setName(string value);
+    void setEmail(string value);
+    void setPassword(string value);
+    void setRole(string value);
+    void setClassName(string value);
 
-    void setName(string value) { name = value; }
-    void setEmail(string value) { email = value; }
-    void setPassword(string value) { password = value; }
-    void setRole(string value) { role = value; }
-    void setClassName(string value) { className = value; }
-
-    bool checkPassword(string inputPassword) const {
-        return password == inputPassword;
-    }
-
-    virtual string getInfoLine() const {
-        return userId + " | " + role + " | " + name + " | " + email + " | " + className;
-    }
+    bool checkPassword(const string& inputPassword) const;
+    virtual string getInfoLine() const;
 };
 
 class Student : public User {
 public:
-    Student(string userId, string name, string email, string password, string className)
-        : User(userId, name, email, password, "student", className) {}
+    Student(string userId, string name, string email, string password, string className);
 };
 
 class Admin : public User {
 public:
-    Admin(string userId, string name, string email, string password)
-        : User(userId, name, email, password, "admin", "Admin") {}
+    Admin(string userId, string name, string email, string password);
 };
 
 class Teacher : public User {
 public:
-    Teacher(string userId, string name, string email, string password, string className)
-        : User(userId, name, email, password, "teacher", className) {}
+    Teacher(string userId, string name, string email, string password, string className);
 };
 
 class Question {
@@ -71,44 +62,27 @@ private:
 public:
     Question(string questionId, string content, array<string, 4> options,
              char correctAnswer, string subject, string difficulty,
-             string imagePath = "", string imageUrl = "")
-        : questionId(questionId), content(content), options(options),
-          correctAnswer((char)toupper(correctAnswer)), subject(subject), difficulty(difficulty),
-          imagePath(imagePath), imageUrl(imageUrl) {}
+             string imagePath = "", string imageUrl = "");
 
-    string getQuestionId() const { return questionId; }
-    string getContent() const { return content; }
-    array<string, 4> getOptions() const { return options; }
-    char getCorrectAnswer() const { return correctAnswer; }
-    string getSubject() const { return subject; }
-    string getDifficulty() const { return difficulty; }
-    string getImagePath() const { return imagePath; }
-    string getImageUrl() const { return imageUrl; }
-    bool hasImage() const { return !imagePath.empty() || !imageUrl.empty(); }
+    string getQuestionId() const;
+    string getContent() const;
+    const array<string, 4>& getOptions() const;
+    char getCorrectAnswer() const;
+    string getSubject() const;
+    string getDifficulty() const;
+    string getImagePath() const;
+    string getImageUrl() const;
+    bool hasImage() const;
 
-    void setContent(string value) { content = value; }
-    void setOptions(array<string, 4> value) { options = value; }
-    void setCorrectAnswer(char value) { correctAnswer = (char)toupper(value); }
-    void setSubject(string value) { subject = value; }
-    void setDifficulty(string value) { difficulty = value; }
-    void setImagePath(string value) { imagePath = value; }
-    void setImageUrl(string value) { imageUrl = value; }
+    void setContent(string value);
+    void setOptions(array<string, 4> value);
+    void setCorrectAnswer(char value);
+    void setSubject(string value);
+    void setDifficulty(string value);
+    void setImagePath(string value);
+    void setImageUrl(string value);
 
-    string toText(bool showAnswer) const {
-        stringstream ss;
-        ss << questionId << ". " << content << " [" << subject << "]\r\n";
-        for (int i = 0; i < 4; i++) {
-            ss << "   " << (char)('A' + i) << ". " << options[i] << "\r\n";
-        }
-        if (showAnswer) {
-            ss << "   Đáp án đúng: " << correctAnswer << "\r\n";
-        }
-        if (hasImage()) {
-            ss << "   Hình ảnh: Có\r\n";
-        }
-        ss << "\r\n";
-        return ss.str();
-    }
+    string toText(bool showAnswer) const;
 };
 
 class Exam {
@@ -134,78 +108,50 @@ public:
     Exam(string examId, string title, int durationMinutes, vector<string> questionIds,
          string createdBy, string startAt, string closeAt, string examPassword,
          string attachmentPath, string attachmentUrl, vector<char> answerKey, int attemptLimit,
-         int violationLimit, bool shuffleQuestions, bool shuffleAnswers, bool open)
-        : examId(examId), title(title), durationMinutes(durationMinutes),
-          questionIds(questionIds), createdBy(createdBy), startAt(startAt), closeAt(closeAt),
-          examPassword(examPassword), attachmentPath(attachmentPath), attachmentUrl(attachmentUrl),
-          answerKey(answerKey), attemptLimit(attemptLimit), violationLimit(violationLimit),
-          shuffleQuestions(shuffleQuestions), shuffleAnswers(shuffleAnswers), open(open) {}
+         int violationLimit, bool shuffleQuestions, bool shuffleAnswers, bool open);
 
-    string getExamId() const { return examId; }
-    string getTitle() const { return title; }
-    int getDurationMinutes() const { return durationMinutes; }
-    vector<string> getQuestionIds() const { return questionIds; }
-    string getCreatedBy() const { return createdBy; }
-    string getStartAt() const { return startAt; }
-    string getCloseAt() const { return closeAt; }
-    string getExamPassword() const { return examPassword; }
-    string getAttachmentPath() const { return attachmentPath; }
-    string getAttachmentUrl() const { return attachmentUrl; }
-    vector<char> getAnswerKey() const { return answerKey; }
-    int getAttemptLimit() const { return attemptLimit; }
-    int getViolationLimit() const { return violationLimit; }
-    bool shouldShuffleQuestions() const { return shuffleQuestions; }
-    bool shouldShuffleAnswers() const { return shuffleAnswers; }
-    bool isOpen() const { return open; }
-    bool hasPassword() const { return !examPassword.empty(); }
-    bool hasAttachment() const { return !attachmentPath.empty() || !attachmentUrl.empty(); }
-    bool isFileAnswerExam() const { return questionIds.empty() && !answerKey.empty(); }
-    int totalQuestions() const { return isFileAnswerExam() ? (int)answerKey.size() : (int)questionIds.size(); }
+    string getExamId() const;
+    string getTitle() const;
+    int getDurationMinutes() const;
+    const vector<string>& getQuestionIds() const;
+    string getCreatedBy() const;
+    string getStartAt() const;
+    string getCloseAt() const;
+    string getExamPassword() const;
+    string getAttachmentPath() const;
+    string getAttachmentUrl() const;
+    const vector<char>& getAnswerKey() const;
+    int getAttemptLimit() const;
+    int getViolationLimit() const;
+    bool shouldShuffleQuestions() const;
+    bool shouldShuffleAnswers() const;
+    bool isOpen() const;
+    bool hasPassword() const;
+    bool hasAttachment() const;
+    bool isFileAnswerExam() const;
+    int totalQuestions() const;
 
-    void setTitle(string value) { title = value; }
-    void setDurationMinutes(int value) { durationMinutes = value; }
-    void setQuestionIds(vector<string> value) { questionIds = value; }
-    void setCreatedBy(string value) { createdBy = value; }
-    void setStartAt(string value) { startAt = value; }
-    void setCloseAt(string value) { closeAt = value; }
-    void setExamPassword(string value) { examPassword = value; }
-    void setAttachmentPath(string value) { attachmentPath = value; }
-    void setAttachmentUrl(string value) { attachmentUrl = value; }
-    void setAnswerKey(vector<char> value) { answerKey = value; }
-    void setAttemptLimit(int value) { attemptLimit = value; }
-    void setViolationLimit(int value) { violationLimit = value; }
-    void setShuffleQuestions(bool value) { shuffleQuestions = value; }
-    void setShuffleAnswers(bool value) { shuffleAnswers = value; }
-    void setOpen(bool value) { open = value; }
+    void setTitle(string value);
+    void setDurationMinutes(int value);
+    void setQuestionIds(vector<string> value);
+    void setCreatedBy(string value);
+    void setStartAt(string value);
+    void setCloseAt(string value);
+    void setExamPassword(string value);
+    void setAttachmentPath(string value);
+    void setAttachmentUrl(string value);
+    void setAnswerKey(vector<char> value);
+    void setAttemptLimit(int value);
+    void setViolationLimit(int value);
+    void setShuffleQuestions(bool value);
+    void setShuffleAnswers(bool value);
+    void setOpen(bool value);
 
-    bool isBeforeStart(string currentTime) const {
-        return !startAt.empty() && currentTime < startAt;
-    }
-
-    bool isClosedByTime(string currentTime) const {
-        return !closeAt.empty() && currentTime > closeAt;
-    }
-
-    bool canTake(string currentTime) const {
-        return open && !isBeforeStart(currentTime) && !isClosedByTime(currentTime);
-    }
-
-    string statusText(string currentTime) const {
-        if (!open) {
-            return "DONG";
-        }
-        if (isBeforeStart(currentTime)) {
-            return "CHUA_MO";
-        }
-        if (isClosedByTime(currentTime)) {
-            return "HET_HAN";
-        }
-        return "OPEN";
-    }
-
-    bool checkExamPassword(string inputPassword) const {
-        return examPassword.empty() || examPassword == inputPassword;
-    }
+    bool isBeforeStart(const string& currentTime) const;
+    bool isClosedByTime(const string& currentTime) const;
+    bool canTake(const string& currentTime) const;
+    string statusText(const string& currentTime) const;
+    bool checkExamPassword(const string& inputPassword) const;
 };
 
 class AnswerSheet {
@@ -219,20 +165,18 @@ private:
 
 public:
     AnswerSheet(string sheetId, string studentId, string examId,
-                map<string, char> answers, string submittedAt, int score)
-        : sheetId(sheetId), studentId(studentId), examId(examId),
-          answers(answers), submittedAt(submittedAt), score(score) {}
+                map<string, char> answers, string submittedAt, int score);
 
-    string getSheetId() const { return sheetId; }
-    string getStudentId() const { return studentId; }
-    string getExamId() const { return examId; }
-    map<string, char> getAnswers() const { return answers; }
-    string getSubmittedAt() const { return submittedAt; }
-    int getScore() const { return score; }
+    string getSheetId() const;
+    string getStudentId() const;
+    string getExamId() const;
+    const map<string, char>& getAnswers() const;
+    string getSubmittedAt() const;
+    int getScore() const;
 
-    void setAnswers(map<string, char> value) { answers = value; }
-    void setSubmittedAt(string value) { submittedAt = value; }
-    void setScore(int value) { score = value; }
+    void setAnswers(map<string, char> value);
+    void setSubmittedAt(string value);
+    void setScore(int value);
 };
 
 class Result {
@@ -246,18 +190,16 @@ private:
 
 public:
     Result(string resultId, string studentId, string examId, int score,
-           int totalQuestions, string submittedAt)
-        : resultId(resultId), studentId(studentId), examId(examId),
-          score(score), totalQuestions(totalQuestions), submittedAt(submittedAt) {}
+           int totalQuestions, string submittedAt);
 
-    string getResultId() const { return resultId; }
-    string getStudentId() const { return studentId; }
-    string getExamId() const { return examId; }
-    int getScore() const { return score; }
-    int getTotalQuestions() const { return totalQuestions; }
-    string getSubmittedAt() const { return submittedAt; }
+    string getResultId() const;
+    string getStudentId() const;
+    string getExamId() const;
+    int getScore() const;
+    int getTotalQuestions() const;
+    string getSubmittedAt() const;
 
-    void setScore(int value) { score = value; }
-    void setTotalQuestions(int value) { totalQuestions = value; }
-    void setSubmittedAt(string value) { submittedAt = value; }
+    void setScore(int value);
+    void setTotalQuestions(int value);
+    void setSubmittedAt(string value);
 };

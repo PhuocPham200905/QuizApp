@@ -1,5 +1,6 @@
 # Build output
 build/
+build-*/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
@@ -21,6 +22,8 @@ test-results/
 text.csv
 
 # Firebase secrets
+.env
+.env.*
 serviceAccountKey.json
 **/serviceAccountKey.json
 *.firebase-adminsdk*.json

@@ -14,9 +14,20 @@ add_executable(QuizApp WIN32
     GuiApp.h
     src/Common.h
     src/models/Models.h
+    src/models/Models.cpp
     src/services/FirebaseService.h
+    src/services/FirebaseService.cpp
+    src/services/AIQuestionService.h
+    src/services/AIQuestionService.cpp
+    src/security/PasswordHasher.h
+    src/security/PasswordHasher.cpp
+    src/data/QuizRepository.h
+    src/data/QuizRepository.cpp
+    src/data/QuizService.h
     src/data/QuizData.h
+    src/data/QuizData.cpp
     src/ui/ControlIds.h
+    src/ui/Layout.h
     src/ui/features/GuiCore.inl
     src/ui/features/AuthScreens.inl
     src/ui/features/DashboardScreens.inl
@@ -28,11 +39,21 @@ add_executable(QuizApp WIN32
 
 source_group("Models" FILES
     src/models/Models.h
+    src/models/Models.cpp
 )
 
 source_group("Data and Services" FILES
     src/services/FirebaseService.h
+    src/services/FirebaseService.cpp
+    src/services/AIQuestionService.h
+    src/services/AIQuestionService.cpp
+    src/security/PasswordHasher.h
+    src/security/PasswordHasher.cpp
+    src/data/QuizRepository.h
+    src/data/QuizRepository.cpp
+    src/data/QuizService.h
     src/data/QuizData.h
+    src/data/QuizData.cpp
 )
 
 source_group("UI Features" FILES
@@ -45,6 +66,7 @@ source_group("UI Features" FILES
 
 source_group("UI Core" FILES
     src/ui/ControlIds.h
+    src/ui/Layout.h
     src/ui/features/GuiCore.inl
     src/ui/features/GuiUtilities.inl
 )
@@ -64,6 +86,7 @@ target_link_libraries(QuizApp PRIVATE
     shell32
     ole32
     gdiplus
+    bcrypt
     nlohmann_json::nlohmann_json
     CURL::libcurl
     ZLIB::ZLIB

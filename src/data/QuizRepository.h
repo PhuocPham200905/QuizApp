@@ -1,12 +1,11 @@
 #pragma once
 
 #include "../Common.h"
+#include "../services/FirebaseService.h"
 
-class FirebaseService {
+class QuizRepository {
 private:
-    string projectId = "quizapp-e586a";
-    string baseUrl = "https://firestore.googleapis.com/v1/projects/quizapp-e586a/databases/(default)/documents";
-    string lastError;
+    FirebaseService firebase;
 
 public:
     string getLastError() const;
@@ -29,8 +28,4 @@ public:
     json boolValue(bool value) const;
     json stringArrayValue(vector<string> values) const;
     json answerMapValue(map<string, char> answers) const;
-
-private:
-    static size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp);
-    bool request(string method, string url, string body, string& response);
 };

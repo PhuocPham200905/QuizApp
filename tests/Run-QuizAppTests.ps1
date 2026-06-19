@@ -21,6 +21,7 @@ $fixtureCsv = Join-Path $PSScriptRoot "fixtures\questions_vi.csv"
 $sampleCsv = Join-Path $projectRoot "sample_questions.csv"
 
 New-Item -ItemType Directory -Force -Path $resultDirectory | Out-Null
+$env:QUIZAPP_SKIP_FIREBASE = "1"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName Microsoft.VisualBasic
@@ -133,6 +134,41 @@ public static class QuizAppTestInterop
         return found;
     }
 
+    public static IntPtr FindControl(IntPtr parent, int id)
+    {
+        IntPtr result = IntPtr.Zero;
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            if (GetDlgCtrlID(hwnd) == id)
+            {
+                result = hwnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+
+    public static bool SetControlText(IntPtr parent, int id, string value)
+    {
+        IntPtr control = FindControl(parent, id);
+        if (control == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        IntPtr text = Marshal.StringToHGlobalUni(value);
+        try
+        {
+            SendMessage(control, 0x000C, IntPtr.Zero, text);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(text);
+        }
+        return true;
+    }
+
     public static string[] OverlappingButtons(IntPtr parent)
     {
         var buttons = new List<Tuple<IntPtr, string, RECT>>();
@@ -204,13 +240,31 @@ function Stop-QuizApp {
     $script:activeProcess = $null
 }
 
+function Wait-AppWindow {
+    param([int]$TimeoutSeconds = 120)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $script:activeProcess.Refresh()
+        if ($script:activeProcess.HasExited) {
+            throw "Quiz App đã dừng ngoài dự kiến với exit code $($script:activeProcess.ExitCode)."
+        }
+        if ($script:activeProcess.MainWindowHandle -ne [IntPtr]::Zero) {
+            return
+        }
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "Quiz App không tạo cửa sổ chính sau $TimeoutSeconds giây."
+}
+
 function Get-Texts {
     return [QuizAppTestInterop]::VisibleTexts($script:activeProcess.MainWindowHandle)
 }
 
 function Test-VisibleText {
     param([string]$Text)
-    return [bool]((Get-Texts) -contains $Text)
+    return [bool]((Get-Texts | Where-Object { $_.Contains($Text) } | Select-Object -First 1))
 }
 
 function Invoke-AppCommand {
@@ -225,6 +279,18 @@ function Invoke-AppCommand {
     $script:activeProcess.Refresh()
 }
 
+function Set-Field {
+    param([int]$Id, [string]$Value)
+
+    if (-not [QuizAppTestInterop]::SetControlText(
+        $script:activeProcess.MainWindowHandle,
+        $Id,
+        $Value
+    )) {
+        throw "Không tìm thấy ô nhập có ID $Id."
+    }
+}
+
 function Start-LoggedInApp {
     param(
         [string]$Email,
@@ -235,16 +301,11 @@ function Start-LoggedInApp {
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         Stop-QuizApp
         $script:activeProcess = Start-Process -FilePath $Executable -PassThru
-        Start-Sleep -Seconds 12
-        $script:activeProcess.Refresh()
+        Wait-AppWindow
 
-        [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
-        Start-Sleep -Milliseconds 500
-        [System.Windows.Forms.SendKeys]::SendWait($Email)
-        [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
-        [System.Windows.Forms.SendKeys]::SendWait($Password)
-        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-        Start-Sleep -Seconds 2
+        Set-Field 2001 $Email
+        Set-Field 2002 $Password
+        Invoke-AppCommand 1004 2000
         $script:activeProcess.Refresh()
 
         if (Test-VisibleText $ExpectedDashboard) {
@@ -334,8 +395,13 @@ function Test-Role {
     )
 
     $loggedIn = Start-LoggedInApp $Email $Password $Dashboard
+    $loginDetails = "dashboard='$Dashboard'; responding=$($script:activeProcess.Responding)"
+    if (-not $loggedIn) {
+        $visible = (Get-Texts | Select-Object -First 8) -join " | "
+        $loginDetails += "; visible=$visible"
+    }
     Add-TestResult $Role "Đăng nhập và phân quyền" $loggedIn (
-        "dashboard='$Dashboard'; responding=$($script:activeProcess.Responding)"
+        $loginDetails
     )
     if (-not $loggedIn) {
         Stop-QuizApp
