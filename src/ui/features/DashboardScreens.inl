@@ -46,6 +46,7 @@
         defaultButton("Up đề thi", 280, 225, 170, 48, ID_TEACHER_CREATE_EXAM);
         button("Nhập câu hỏi", 470, 225, 170, 48, ID_TEACHER_IMPORT_QUESTIONS);
         button("Quản lý đề", 660, 225, 170, 48, ID_TEACHER_MANAGE_EXAMS);
+        button("Tạo bằng AI", 850, 225, 170, 48, ID_TEACHER_AI_QUESTIONS);
 
         HWND statusTitle = label("Gợi ý quy trình", 280, 330, 260, 30);
         SendMessageW(statusTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);

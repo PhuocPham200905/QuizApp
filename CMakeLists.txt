@@ -17,6 +17,8 @@ add_executable(QuizApp WIN32
     src/models/Models.cpp
     src/services/FirebaseService.h
     src/services/FirebaseService.cpp
+    src/services/AIQuestionService.h
+    src/services/AIQuestionService.cpp
     src/security/PasswordHasher.h
     src/security/PasswordHasher.cpp
     src/data/QuizRepository.h
@@ -43,6 +45,8 @@ source_group("Models" FILES
 source_group("Data and Services" FILES
     src/services/FirebaseService.h
     src/services/FirebaseService.cpp
+    src/services/AIQuestionService.h
+    src/services/AIQuestionService.cpp
     src/security/PasswordHasher.h
     src/security/PasswordHasher.cpp
     src/data/QuizRepository.h

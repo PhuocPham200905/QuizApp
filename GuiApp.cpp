@@ -1,5 +1,6 @@
 #include "GuiApp.h"
 #include "src/data/QuizData.h"
+#include "src/services/AIQuestionService.h"
 #include "src/ui/ControlIds.h"
 #include "src/ui/Layout.h"
 
@@ -26,7 +27,11 @@ private:
     HBRUSH inputBrush = nullptr;
     HBRUSH loginBackgroundBrush = nullptr;
     QuizData data;
+    AIQuestionService aiQuestionService;
     shared_ptr<User> currentUser = nullptr;
+    AIQuestionRequest aiQuestionRequest;
+    vector<GeneratedQuestionDraft> generatedQuestionDrafts;
+    string aiQuestionStatus;
     vector<HWND> controls;
     vector<HBITMAP> imageBitmaps;
     vector<HIMAGELIST> listImageLists;
