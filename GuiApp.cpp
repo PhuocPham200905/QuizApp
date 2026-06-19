@@ -1,6 +1,7 @@
 #include "GuiApp.h"
 #include "src/data/QuizData.h"
 #include "src/ui/ControlIds.h"
+#include "src/ui/Layout.h"
 
 class GuiApp {
 private:

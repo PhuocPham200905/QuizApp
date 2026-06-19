@@ -16,6 +16,7 @@
 #include <cctype>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -25,6 +26,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace std;

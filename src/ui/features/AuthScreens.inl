@@ -25,7 +25,7 @@
         RECT client = {};
         GetClientRect(window, &client);
         int centerX = (int)(client.right - client.left) / 2;
-        int cardX = centerX - 270;
+        int cardX = centerX - Layout::Login::CardHalfWidth;
         int fieldX = cardX + 35;
 
         string logoPath = appDirectory() + "\\hcmute-logo.png";
@@ -50,13 +50,13 @@
         SendMessageW(emailLabel, WM_SETFONT, (WPARAM)smallFont, TRUE);
         controlTextColors[emailLabel] = THEME_MUTED;
         surfaceLabels[emailLabel] = true;
-        edit("", fieldX, 390, 470, 48, 2001);
+        edit("", fieldX, Layout::Login::EmailFieldY, Layout::Login::FieldWidth, Layout::Login::FieldHeight, ID_FIELD_LOGIN_EMAIL);
 
         HWND passwordLabel = label("Mật khẩu", fieldX + 2, 453, 470, 24);
         SendMessageW(passwordLabel, WM_SETFONT, (WPARAM)smallFont, TRUE);
         controlTextColors[passwordLabel] = THEME_MUTED;
         surfaceLabels[passwordLabel] = true;
-        edit("", fieldX, 480, 470, 48, 2002, true);
+        edit("", fieldX, Layout::Login::PasswordFieldY, Layout::Login::FieldWidth, Layout::Login::FieldHeight, ID_FIELD_LOGIN_PASSWORD, true);
 
         defaultButton("Đăng nhập", fieldX, 554, 470, 48, ID_LOGIN_SUBMIT);
         button("Đăng ký tài khoản học sinh", fieldX, 618, 470, 46, ID_MAIN_REGISTER);
@@ -78,7 +78,7 @@
             nullptr,
             RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW
         );
-        setFocusTo(2001);
+        setFocusTo(ID_FIELD_LOGIN_EMAIL);
     }
 
     void showRegisterScreen() {
@@ -86,21 +86,21 @@
         currentScreen = SCREEN_REGISTER;
         title("Đăng ký học sinh", "Chỉ học sinh được tự đăng ký.");
         label("Họ tên", 300, 130, 130, 26);
-        edit("", 450, 126, 280, 30, 2101);
+        edit("", 450, 126, 280, 30, ID_FIELD_REGISTER_NAME);
         label("Email", 300, 175, 130, 26);
-        edit("", 450, 171, 280, 30, 2102);
+        edit("", 450, 171, 280, 30, ID_FIELD_REGISTER_EMAIL);
         label("Mật khẩu", 300, 220, 130, 26);
-        edit("", 450, 216, 280, 30, 2103, true);
+        edit("", 450, 216, 280, 30, ID_FIELD_REGISTER_PASSWORD, true);
         label("Lớp", 300, 265, 130, 26);
-        edit("", 450, 261, 280, 30, 2104);
+        edit("", 450, 261, 280, 30, ID_FIELD_REGISTER_CLASS);
         defaultButton("Đăng ký", 450, 320, 125, 38, ID_REGISTER_SUBMIT);
         button("Quay lại", 585, 320, 125, 38, ID_BACK_MAIN);
-        setFocusTo(2101);
+        setFocusTo(ID_FIELD_REGISTER_NAME);
     }
 
     void submitLogin() {
-        string email = getText(2001);
-        string password = getText(2002);
+        string email = getText(ID_FIELD_LOGIN_EMAIL);
+        string password = getText(ID_FIELD_LOGIN_PASSWORD);
         shared_ptr<User> user = data.findUserByEmail(email);
         if (user == nullptr || !user->checkPassword(password)) {
             data.writeAuditLog(email, "", "LOGIN_FAILED", "Sai email hoặc mật khẩu");
@@ -116,10 +116,10 @@
     }
 
     void submitRegisterStudent() {
-        string name = getText(2101);
-        string email = getText(2102);
-        string password = getText(2103);
-        string className = normalizeClassName(getText(2104));
+        string name = getText(ID_FIELD_REGISTER_NAME);
+        string email = getText(ID_FIELD_REGISTER_EMAIL);
+        string password = getText(ID_FIELD_REGISTER_PASSWORD);
+        string className = normalizeClassName(getText(ID_FIELD_REGISTER_CLASS));
 
         if (name.empty() || email.empty() || password.empty() || className.empty()) {
             error("Vui lòng nhập đầy đủ thông tin.");
