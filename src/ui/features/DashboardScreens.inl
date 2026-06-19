@@ -37,8 +37,8 @@
         button("Đề thi", 24, 320, 190, 40, ID_TEACHER_EXAMS);
         button("Up đề thi", 24, 370, 190, 40, ID_TEACHER_CREATE_EXAM);
         button("Mở/đóng đề", 24, 420, 190, 40, ID_TEACHER_TOGGLE_EXAM);
-        button("Kết quả", 24, 470, 190, 40, ID_TEACHER_RESULTS);
-        button("Quản lý đề", 24, 520, 190, 40, ID_TEACHER_MANAGE_EXAMS);
+        button("Kết quả", 24, 450, 190, 40, ID_TEACHER_RESULTS);
+        button("Quản lý đề", 24, 495, 190, 40, ID_TEACHER_MANAGE_EXAMS);
 
         HWND heading = label("Tạo và theo dõi bài thi", 280, 125, 420, 32);
         SendMessageW(heading, WM_SETFONT, (WPARAM)brandFont, TRUE);

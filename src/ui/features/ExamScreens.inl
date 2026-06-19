@@ -74,8 +74,9 @@
         label("File đề", 290, 491, 170, 26);
         edit("", 500, 487, 280, 30, 5007);
         button("Chọn file", 795, 487, 110, 32, ID_CREATE_EXAM_CHOOSE_FILE);
-        label("Link file đề", 290, 529, 170, 26);
+        label("Link file đề (dùng đa máy)", 290, 529, 195, 26);
         edit("", 500, 525, 405, 30, 5008);
+        label("Nên dùng URL tải công khai nếu học sinh làm trên máy khác.", 920, 529, 300, 26);
         defaultButton("Tạo đề", 500, 585, 120, 38, ID_CREATE_EXAM_SUBMIT);
         button("Về dashboard", 635, 585, 150, 38, ID_DASHBOARD);
         setFocusTo(5001);
@@ -154,10 +155,18 @@
             return;
         }
 
+        bool localFileOnly = !attachmentPath.empty() && attachmentUrl.empty();
         data.addExam(title, duration, validIds, answerKey, currentUser->getUserId(), startAt, closeAt,
                      examPassword, attachmentPath, attachmentUrl, attemptLimit,
                      violationLimit, shuffleQuestions, shuffleAnswers);
-        message("Đã tạo đề thi.");
+        if (localFileOnly) {
+            message("Đã tạo đề thi.\r\n\r\n"
+                    "Lưu ý: file hiện chỉ mở được trên máy giáo viên. "
+                    "Hãy thêm Link file đề công khai trong Quản lý đề thi "
+                    "để học sinh dùng máy khác có thể mở.");
+        } else {
+            message("Đã tạo đề thi.");
+        }
         showTeacherDashboard();
     }
 
@@ -214,42 +223,45 @@
         currentScreen = SCREEN_MANAGE_EXAM;
         title("Quản lý đề thi", "Giáo viên có thể tải thông tin, chỉnh sửa hoặc xóa đề do mình tạo.");
         addNav("Giáo viên");
-        examListView(250, 82, 1000, 270, false);
+        examListView(250, 82, 1000, 180, false);
 
-        label("Mã đề", 280, 380, 90, 26);
-        edit("", 375, 376, 150, 30, 6301);
-        button("Tải thông tin", 540, 374, 130, 34, ID_LOAD_EXAM_EDIT);
+        label("Mã đề", 280, 285, 90, 26);
+        edit("", 375, 281, 150, 30, 6301);
+        button("Tải thông tin", 540, 279, 100, 34, ID_LOAD_EXAM_EDIT);
 
-        label("Tên đề", 700, 380, 90, 26);
-        edit("", 790, 376, 400, 30, 6302);
+        label("Tên đề", 650, 285, 70, 26);
+        edit("", 720, 281, 280, 30, 6302);
 
-        label("Thời gian làm", 280, 425, 120, 26);
-        edit("", 405, 421, 90, 30, 6303);
-        label("phút", 500, 425, 45, 26);
-        label("Số lượt", 700, 425, 90, 26);
-        edit("", 790, 421, 90, 30, 6307);
-        checkBox("Trộn câu hỏi", 900, 418, 145, 30, 6310, false);
-        checkBox("Trộn đáp án", 1050, 418, 145, 30, 6311, false);
+        label("Thời gian làm", 280, 325, 120, 26);
+        edit("", 405, 321, 90, 30, 6303);
+        label("phút", 500, 325, 45, 26);
+        label("Số lượt", 650, 325, 70, 26);
+        edit("", 720, 321, 70, 30, 6307);
+        checkBox("Trộn câu", 805, 318, 90, 30, 6310, false);
+        checkBox("Trộn đáp án", 900, 318, 100, 30, 6311, false);
 
-        label("Mở lúc", 280, 470, 90, 26);
-        edit("", 375, 466, 210, 30, 6304);
-        label("Đóng lúc", 700, 470, 90, 26);
-        edit("", 790, 466, 210, 30, 6305);
-        label("Tự nộp sau", 1015, 470, 100, 26);
-        edit("", 1120, 466, 70, 30, 6312);
+        label("Mở lúc", 280, 365, 90, 26);
+        edit("", 375, 361, 210, 30, 6304);
+        label("Đóng lúc", 650, 365, 70, 26);
+        edit("", 720, 361, 175, 30, 6305);
+        label("Tự nộp", 900, 365, 58, 26);
+        edit("", 958, 361, 42, 30, 6312);
 
-        label("Mã câu hỏi", 280, 515, 110, 26);
-        edit("", 405, 511, 785, 30, 6308);
-        label("Đáp án file đề", 280, 560, 120, 26);
-        edit("", 405, 556, 785, 30, 6309);
+        label("Mã câu hỏi", 280, 405, 110, 26);
+        edit("", 405, 401, 605, 30, 6308);
+        label("Đáp án file đề", 280, 445, 120, 26);
+        edit("", 405, 441, 605, 30, 6309);
 
-        label("Mật khẩu đề", 280, 605, 120, 26);
-        edit("", 405, 601, 220, 30, 6306);
-        label("Để trống nếu không dùng mật khẩu", 640, 605, 270, 26);
+        label("Mật khẩu đề", 280, 485, 120, 26);
+        edit("", 405, 481, 220, 30, 6306);
+        label("Để trống nếu không dùng mật khẩu", 640, 485, 270, 26);
 
-        defaultButton("Lưu thay đổi", 465, 660, 150, 42, ID_UPDATE_EXAM_SUBMIT);
-        button("Xóa đề", 630, 660, 120, 42, ID_DELETE_EXAM_SUBMIT);
-        button("Về dashboard", 765, 660, 150, 42, ID_DASHBOARD);
+        label("Link file đề", 280, 525, 120, 26);
+        edit("", 405, 521, 605, 30, 6313);
+
+        defaultButton("Lưu thay đổi", 465, 565, 150, 36, ID_UPDATE_EXAM_SUBMIT);
+        button("Xóa đề", 630, 565, 120, 36, ID_DELETE_EXAM_SUBMIT);
+        button("Về dashboard", 765, 565, 150, 36, ID_DASHBOARD);
         setFocusTo(6301);
     }
 
@@ -281,6 +293,7 @@
         setControlText(GetDlgItem(window, 6312), to_string(exam->getViolationLimit()));
         setControlText(GetDlgItem(window, 6308), questionIds.str());
         setControlText(GetDlgItem(window, 6309), answerKey.str());
+        setControlText(GetDlgItem(window, 6313), exam->getAttachmentUrl());
         SendMessageW(GetDlgItem(window, 6310), BM_SETCHECK,
                      exam->shouldShuffleQuestions() ? BST_CHECKED : BST_UNCHECKED, 0);
         SendMessageW(GetDlgItem(window, 6311), BM_SETCHECK,
@@ -294,6 +307,7 @@
         string startAt = getText(6304);
         string closeAt = getText(6305);
         string examPassword = getText(6306);
+        string attachmentUrl = getText(6313);
         int attemptLimit = atoi(getText(6307).c_str());
         int violationLimit = atoi(getText(6312).c_str());
         string questionIdsText = getText(6308);
@@ -338,7 +352,8 @@
         }
 
         if (!data.updateExamDetails(examId, currentUser->getUserId(), examTitle, duration,
-                                    startAt, closeAt, examPassword, attemptLimit, violationLimit,
+                                    startAt, closeAt, examPassword, attachmentUrl,
+                                    attemptLimit, violationLimit,
                                     validIds, answerKey, shuffleQuestions, shuffleAnswers)) {
             error(data.getFirebaseStatus());
             return;
@@ -411,7 +426,7 @@
         if (exam.isFileAnswerExam()) {
             vector<char> answerKey = exam.getAnswerKey();
             int totalQuestions = (int)answerKey.size();
-            int rowsPerBlock = 20;
+            int rowsPerBlock = 15;
             int blockCount = min(3, max(1, (totalQuestions + rowsPerBlock - 1) / rowsPerBlock));
             bool compactAnswerSheet = blockCount > 1;
             int answerPanelX = 270;
@@ -420,7 +435,7 @@
             int answerPanelW = blockCount * blockWidth + 36;
             int contentX = answerPanelX + answerPanelW + 24;
             int contentY = y;
-            int contentW = max(560, 1320 - contentX);
+            int contentW = max(380, 1240 - contentX);
 
             HWND answerTitle = label("Bảng trả lời", answerPanelX + 18, answerPanelY + 16, 190, 28);
             SendMessageW(answerTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
@@ -430,11 +445,11 @@
 
             HWND contentTitle = label("Nội dung đề", contentX, contentY, 160, 24);
             SendMessageW(contentTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
-            addControl("STATIC", "", SS_ETCHEDFRAME, contentX, contentY + 30, contentW, 585, 0, false);
-            showInlineExamAttachment(exam, contentX + 15, contentY + 45, contentW - 30, 555);
+            addControl("STATIC", "", SS_ETCHEDFRAME, contentX, contentY + 30, contentW, 430, 0, false);
+            showInlineExamAttachment(exam, contentX + 15, contentY + 45, contentW - 30, 400);
 
             int tableY = answerPanelY + 82;
-            int rowHeight = compactAnswerSheet ? 27 : 31;
+            int rowHeight = totalQuestions > 15 ? 23 : 27;
             int questionW = compactAnswerSheet ? 38 : 58;
             int optionW = compactAnswerSheet ? 28 : 42;
             int optionGap = compactAnswerSheet ? 4 : 10;
@@ -460,15 +475,15 @@
                         break;
                     }
 
-                    int itemY = tableY + 28 + row * rowHeight;
-                    HWND questionNumber = label(to_string(index + 1), x, itemY + 3, questionW, 24);
+                    int itemY = tableY + 26 + row * rowHeight;
+                    HWND questionNumber = label(to_string(index + 1), x, itemY + 1, questionW, 21);
                     SendMessageW(questionNumber, WM_SETFONT, (WPARAM)smallFont, TRUE);
                     int optionX = x + questionW;
                     array<HWND, 4> buttons = {
-                        answerChoiceButton("A", optionX, itemY, optionW, 25, 5400 + index * 10 + 0, true),
-                        answerChoiceButton("B", optionX + (optionW + optionGap), itemY, optionW, 25, 5400 + index * 10 + 1, false),
-                        answerChoiceButton("C", optionX + (optionW + optionGap) * 2, itemY, optionW, 25, 5400 + index * 10 + 2, false),
-                        answerChoiceButton("D", optionX + (optionW + optionGap) * 3, itemY, optionW, 25, 5400 + index * 10 + 3, false),
+                        answerChoiceButton("A", optionX, itemY, optionW, 21, 5400 + index * 10 + 0, true),
+                        answerChoiceButton("B", optionX + (optionW + optionGap), itemY, optionW, 21, 5400 + index * 10 + 1, false),
+                        answerChoiceButton("C", optionX + (optionW + optionGap) * 2, itemY, optionW, 21, 5400 + index * 10 + 2, false),
+                        answerChoiceButton("D", optionX + (optionW + optionGap) * 3, itemY, optionW, 21, 5400 + index * 10 + 3, false),
                     };
                     answerOptions.push_back(buttons);
                     activeAnswerValues.push_back({'A', 'B', 'C', 'D'});
@@ -476,8 +491,8 @@
                 }
             }
 
-            defaultButton("Nộp bài", 720, 725, 120, 38, ID_TAKE_EXAM_SUBMIT);
-            button("Về dashboard", 560, 725, 145, 38, ID_DASHBOARD);
+            defaultButton("Nộp bài", 720, 560, 120, 36, ID_TAKE_EXAM_SUBMIT);
+            button("Về dashboard", 560, 560, 145, 36, ID_DASHBOARD);
             if (!answerOptions.empty()) {
                 SetFocus(answerOptions[0][0]);
             }
@@ -515,7 +530,7 @@
         }
 
         if (examQuestions.size() > 5) {
-            int rowsPerBlock = 20;
+            int rowsPerBlock = 15;
             int blockCount = min(3, max(1, ((int)examQuestions.size() + rowsPerBlock - 1) / rowsPerBlock));
             int answerPanelX = 270;
             int answerPanelY = y;
@@ -523,7 +538,7 @@
             int answerPanelW = blockCount * blockWidth + 36;
             int contentX = answerPanelX + answerPanelW + 24;
             int contentY = y;
-            int contentW = max(560, 1320 - contentX);
+            int contentW = max(380, 1240 - contentX);
 
             HWND answerTitle = label("Bảng trả lời", answerPanelX + 18, answerPanelY + 16, 190, 28);
             SendMessageW(answerTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
@@ -544,10 +559,10 @@
                 }
                 questionText << "\r\n";
             }
-            protectedExamText(questionText.str(), contentX, contentY + 30, contentW, 585);
+            protectedExamText(questionText.str(), contentX, contentY + 30, contentW, 430);
 
             int tableY = answerPanelY + 82;
-            int rowHeight = 27;
+            int rowHeight = 23;
             int questionW = 38;
             int optionW = 28;
             int optionGap = 4;
@@ -573,15 +588,15 @@
                         break;
                     }
 
-                    int itemY = tableY + 28 + row * rowHeight;
-                    HWND questionNumber = label(to_string(questionIndex + 1), x, itemY + 3, questionW, 24);
+                    int itemY = tableY + 26 + row * rowHeight;
+                    HWND questionNumber = label(to_string(questionIndex + 1), x, itemY + 1, questionW, 21);
                     SendMessageW(questionNumber, WM_SETFONT, (WPARAM)smallFont, TRUE);
                     int optionX = x + questionW;
                     array<HWND, 4> buttons = {
-                        answerChoiceButton("A", optionX, itemY, optionW, 25, 5300 + questionIndex * 10 + 0, true),
-                        answerChoiceButton("B", optionX + (optionW + optionGap), itemY, optionW, 25, 5300 + questionIndex * 10 + 1, false),
-                        answerChoiceButton("C", optionX + (optionW + optionGap) * 2, itemY, optionW, 25, 5300 + questionIndex * 10 + 2, false),
-                        answerChoiceButton("D", optionX + (optionW + optionGap) * 3, itemY, optionW, 25, 5300 + questionIndex * 10 + 3, false),
+                        answerChoiceButton("A", optionX, itemY, optionW, 21, 5300 + questionIndex * 10 + 0, true),
+                        answerChoiceButton("B", optionX + (optionW + optionGap), itemY, optionW, 21, 5300 + questionIndex * 10 + 1, false),
+                        answerChoiceButton("C", optionX + (optionW + optionGap) * 2, itemY, optionW, 21, 5300 + questionIndex * 10 + 2, false),
+                        answerChoiceButton("D", optionX + (optionW + optionGap) * 3, itemY, optionW, 21, 5300 + questionIndex * 10 + 3, false),
                     };
                     answerOptions.push_back(buttons);
                     activeAnswerValues.push_back(displayedAnswerValues[questionIndex]);
@@ -589,8 +604,8 @@
                 }
             }
 
-            defaultButton("Nộp bài", 720, 725, 120, 38, ID_TAKE_EXAM_SUBMIT);
-            button("Về dashboard", 560, 725, 145, 38, ID_DASHBOARD);
+            defaultButton("Nộp bài", 720, 560, 120, 36, ID_TAKE_EXAM_SUBMIT);
+            button("Về dashboard", 560, 560, 145, 36, ID_DASHBOARD);
             if (!answerOptions.empty()) {
                 SetFocus(answerOptions[0][0]);
             }
@@ -625,8 +640,8 @@
             index++;
         }
 
-        defaultButton("Nộp bài", 720, 735, 120, 38, ID_TAKE_EXAM_SUBMIT);
-        button("Về dashboard", 560, 735, 145, 38, ID_DASHBOARD);
+        defaultButton("Nộp bài", 720, 560, 120, 36, ID_TAKE_EXAM_SUBMIT);
+        button("Về dashboard", 560, 560, 145, 36, ID_DASHBOARD);
         if (!answerOptions.empty()) {
             SetFocus(answerOptions[0][0]);
         }
@@ -639,24 +654,45 @@
             return;
         }
 
-        string target = exam->getAttachmentUrl().empty()
-                            ? exam->getAttachmentPath()
-                            : exam->getAttachmentUrl();
+        string target;
+        if (localExamFileExists(exam->getAttachmentPath())) {
+            target = exam->getAttachmentPath();
+        } else if (!exam->getAttachmentUrl().empty()) {
+            string cachedPath = cachedExamAttachmentPath(*exam);
+            if (!cachedPath.empty() && localExamFileExists(cachedPath)) {
+                target = cachedPath;
+            } else if (!cachedPath.empty()) {
+                SetCursor(LoadCursor(nullptr, IDC_WAIT));
+                bool downloaded = downloadExamAttachment(*exam, cachedPath);
+                SetCursor(LoadCursor(nullptr, IDC_ARROW));
+                target = downloaded ? cachedPath : exam->getAttachmentUrl();
+            } else {
+                target = exam->getAttachmentUrl();
+            }
+        }
+
         if (target.empty()) {
-            error("Đề thi nay chua co file dinh kem.");
+            error("File đề chỉ tồn tại trên máy giáo viên và đề chưa có URL dùng chung.\r\n"
+                  "Giáo viên cần vào Quản lý đề thi và thêm Link file đề công khai.");
             return;
         }
 
+        allowExamViewerFocusLossUntil = chrono::steady_clock::now() + chrono::seconds(5);
         wstring wideTarget = utf8ToWide(target);
         HINSTANCE result = ShellExecuteW(window, L"open", wideTarget.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         if ((INT_PTR)result <= 32) {
-            error("Không mở được file/link đề thi. Nếu học sinh dùng máy khác, giáo viên nên dùng liên kết công khai.");
+            allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
+            error("Không mở được file/link đề thi. Hãy kiểm tra URL có công khai và cho phép tải xuống.");
         }
     }
 
     void showInlineExamAttachment(Exam& exam, int x, int y, int w, int h) {
         string localPath = exam.getAttachmentPath();
         string url = exam.getAttachmentUrl();
+        if (!localExamFileExists(localPath)) {
+            string cachedPath = cachedExamAttachmentPath(exam);
+            localPath = localExamFileExists(cachedPath) ? cachedPath : "";
+        }
 
         if (!localPath.empty() && isImageFile(localPath)) {
             HWND image = imageBox(localPath, x, y, w, h);
@@ -690,6 +726,12 @@
             return;
         }
 
+        if (!exam.getAttachmentPath().empty() && localPath.empty() && url.empty()) {
+            label("File đề đang nằm trên máy giáo viên nên máy này không thể mở.", x + 20, y + 30, w - 40, 26);
+            label("Giáo viên cần thêm Link file đề công khai trong Quản lý đề thi.", x + 20, y + 62, w - 40, 26);
+            return;
+        }
+
         if (!localPath.empty() || !url.empty()) {
             label("File Word/PDF hiện chưa xem trực tiếp trong khung này.", x + 20, y + 30, w - 40, 26);
             label("Bấm Mở file đề để mở bằng Word/PDF viewer.", x + 20, y + 62, w - 40, 26);
@@ -698,6 +740,73 @@
         }
 
         label("Đề này chưa có file đính kèm.", x + 20, y + 30, w - 40, 26);
+    }
+
+    bool localExamFileExists(const string& path) {
+        if (path.empty()) {
+            return false;
+        }
+        DWORD attributes = GetFileAttributesA(path.c_str());
+        return attributes != INVALID_FILE_ATTRIBUTES &&
+               (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+    }
+
+    string directAttachmentExtension(string url) {
+        size_t query = url.find_first_of("?#");
+        if (query != string::npos) {
+            url = url.substr(0, query);
+        }
+        transform(url.begin(), url.end(), url.begin(),
+                  [](unsigned char ch) { return (char)tolower(ch); });
+        const array<string, 5> supported = {".pdf", ".docx", ".png", ".jpg", ".jpeg"};
+        for (const string& extension : supported) {
+            if (endsWith(url, extension)) {
+                return extension;
+            }
+        }
+        return "";
+    }
+
+    string cachedExamAttachmentPath(const Exam& exam) {
+        string extension = directAttachmentExtension(exam.getAttachmentUrl());
+        if (extension.empty()) {
+            return "";
+        }
+
+        char localAppData[MAX_PATH] = "";
+        DWORD length = GetEnvironmentVariableA("LOCALAPPDATA", localAppData, MAX_PATH);
+        string root = length > 0 && length < MAX_PATH ? string(localAppData) : appDirectory();
+        string appFolder = root + "\\HCMUTEQuizApp";
+        string cacheFolder = appFolder + "\\exam_cache";
+        CreateDirectoryA(appFolder.c_str(), nullptr);
+        CreateDirectoryA(cacheFolder.c_str(), nullptr);
+        return cacheFolder + "\\" + exam.getExamId() + extension;
+    }
+
+    bool downloadExamAttachment(const Exam& exam, const string& targetPath) {
+        string bytes;
+        if (!data.downloadTextFromUrl(exam.getAttachmentUrl(), bytes) || bytes.empty()) {
+            return false;
+        }
+
+        string extension = directAttachmentExtension(exam.getAttachmentUrl());
+        bool validFile =
+            (extension == ".pdf" && bytes.size() >= 4 && bytes.compare(0, 4, "%PDF") == 0) ||
+            (extension == ".docx" && bytes.size() >= 2 && bytes[0] == 'P' && bytes[1] == 'K') ||
+            (extension == ".png" && bytes.size() >= 8 &&
+             (unsigned char)bytes[0] == 0x89 && bytes.compare(1, 3, "PNG") == 0) ||
+            ((extension == ".jpg" || extension == ".jpeg") && bytes.size() >= 2 &&
+             (unsigned char)bytes[0] == 0xFF && (unsigned char)bytes[1] == 0xD8);
+        if (!validFile) {
+            return false;
+        }
+
+        ofstream output(targetPath, ios::binary);
+        if (!output) {
+            return false;
+        }
+        output.write(bytes.data(), (streamsize)bytes.size());
+        return output.good();
     }
 
     void trimInPlace(string& text) {

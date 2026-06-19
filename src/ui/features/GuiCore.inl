@@ -54,10 +54,14 @@
         controlsInfo.dwICC = ICC_LISTVIEW_CLASSES;
         InitCommonControlsEx(&controlsInfo);
 
-        int windowWidth = 1280;
-        int windowHeight = 840;
-        int windowX = max(0, (GetSystemMetrics(SM_CXSCREEN) - windowWidth) / 2);
-        int windowY = max(0, (GetSystemMetrics(SM_CYSCREEN) - windowHeight) / 2);
+        RECT workArea = {};
+        SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+        int availableWidth = workArea.right - workArea.left;
+        int availableHeight = workArea.bottom - workArea.top;
+        int windowWidth = min(1280, availableWidth);
+        int windowHeight = min(800, availableHeight);
+        int windowX = workArea.left + max(0, (availableWidth - windowWidth) / 2);
+        int windowY = workArea.top + max(0, (availableHeight - windowHeight) / 2);
         window = CreateWindowW(L"QuizAppGuiWindow", L"HCMUTE Quiz App",
                                WS_OVERLAPPEDWINDOW,
                                windowX, windowY, windowWidth, windowHeight,
@@ -155,6 +159,10 @@
         if (message == WM_ACTIVATEAPP && wParam == FALSE &&
             currentScreen == SCREEN_TAKE_EXAM_FORM && !antiCheatDialogOpen &&
             !examSubmissionInProgress) {
+            if (chrono::steady_clock::now() <= allowExamViewerFocusLossUntil) {
+                allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
+                return 0;
+            }
             recordExamViolation("Mất focus khỏi cửa sổ thi");
             return 0;
         }
@@ -312,7 +320,7 @@ private:
             FillRect(hdc, &client, loginBackgroundBrush);
 
             int centerX = (int)(client.right - client.left) / 2;
-            RECT card = { centerX - 270, 232, centerX + 270, 752 };
+            RECT card = { centerX - 270, 145, centerX + 270, min(client.bottom - 12, 548L) };
             HBRUSH cardBrush = CreateSolidBrush(THEME_SURFACE);
             HPEN cardPen = CreatePen(PS_SOLID, 1, THEME_BORDER);
             HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, cardBrush);
@@ -713,6 +721,7 @@ private:
         activeSessionId.clear();
         examViolationCount = 0;
         lastExamViolationAt = chrono::steady_clock::time_point{};
+        allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
         examTimerLabel = nullptr;
         primaryButtons.clear();
         answerChoiceButtons.clear();
@@ -1207,7 +1216,10 @@ private:
     }
 
     HWND examListView(int x, int y, int w, int h, bool onlyOpen) {
-        w = max(w, 1000);
+        RECT client = {};
+        GetClientRect(window, &client);
+        w = min(w, max(700, (int)client.right - x - 18));
+        h = min(h, max(150, (int)client.bottom - y - 70));
         HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
                                    x, y, w, h, window, nullptr, instance, nullptr);
@@ -1266,7 +1278,9 @@ private:
     }
 
     HWND userListView(int x, int y, int w, int h, string role, string keyword = "") {
-        w = max(w, 920);
+        RECT client = {};
+        GetClientRect(window, &client);
+        w = min(w, max(700, (int)client.right - x - 18));
         h = max(h, 360);
         HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,

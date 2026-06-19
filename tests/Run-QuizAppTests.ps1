@@ -404,7 +404,7 @@ try {
         @{ Command = 1022; Title = "Giáo viên tải đề thi"; Controls = @(5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 5010, 5011, 5012, 5013); Rows = $false },
         @{ Command = 1023; Title = "Mở/đóng đề thi"; Controls = @(5101, 5102); Rows = $true },
         @{ Command = 1024; Title = "Kết quả tất cả học sinh"; Controls = @(6501, 6502); Rows = $true },
-        @{ Command = 1100; Title = "Quản lý đề thi"; Controls = @(6301, 6302, 6303, 6304, 6305, 6306, 6307, 6308, 6309, 6310, 6311, 6312); Rows = $true }
+        @{ Command = 1100; Title = "Quản lý đề thi"; Controls = @(6301, 6302, 6303, 6304, 6305, 6306, 6307, 6308, 6309, 6310, 6311, 6312, 6313); Rows = $true }
     )
 
     $studentScreens = @(

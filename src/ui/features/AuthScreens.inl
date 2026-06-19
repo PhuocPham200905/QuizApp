@@ -29,47 +29,47 @@
         int fieldX = cardX + 35;
 
         string logoPath = appDirectory() + "\\hcmute-logo.png";
-        imageBox(logoPath, centerX - 55, 18, 110, 140);
+        imageBox(logoPath, centerX - 45, 8, 90, 100);
 
         centeredLabel(
             "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ KỸ THUẬT TP.HCM",
-            centerX - 330, 164, 660, 54, brandFont, RGB(8, 47, 89)
+            centerX - 330, 108, 660, 38, brandFont, RGB(8, 47, 89)
         );
 
-        HWND formTitle = label("ĐĂNG NHẬP", fieldX, 270, 470, 42);
+        HWND formTitle = label("ĐĂNG NHẬP", fieldX, 168, 470, 38);
         SendMessageW(formTitle, WM_SETFONT, (WPARAM)titleFont, TRUE);
         controlTextColors[formTitle] = RGB(30, 83, 148);
         surfaceLabels[formTitle] = true;
 
-        HWND subtitle = label("Hệ thống quản lý và thi trắc nghiệm", fieldX + 2, 316, 470, 26);
+        HWND subtitle = label("Hệ thống quản lý và thi trắc nghiệm", fieldX + 2, 210, 470, 24);
         SendMessageW(subtitle, WM_SETFONT, (WPARAM)smallFont, TRUE);
         controlTextColors[subtitle] = THEME_MUTED;
         surfaceLabels[subtitle] = true;
 
-        HWND emailLabel = label("Tài khoản hoặc email", fieldX + 2, 363, 470, 24);
+        HWND emailLabel = label("Tài khoản hoặc email", fieldX + 2, 245, 470, 22);
         SendMessageW(emailLabel, WM_SETFONT, (WPARAM)smallFont, TRUE);
         controlTextColors[emailLabel] = THEME_MUTED;
         surfaceLabels[emailLabel] = true;
-        edit("", fieldX, 390, 470, 48, 2001);
+        edit("", fieldX, 267, 470, 42, 2001);
 
-        HWND passwordLabel = label("Mật khẩu", fieldX + 2, 453, 470, 24);
+        HWND passwordLabel = label("Mật khẩu", fieldX + 2, 320, 470, 22);
         SendMessageW(passwordLabel, WM_SETFONT, (WPARAM)smallFont, TRUE);
         controlTextColors[passwordLabel] = THEME_MUTED;
         surfaceLabels[passwordLabel] = true;
-        edit("", fieldX, 480, 470, 48, 2002, true);
+        edit("", fieldX, 342, 470, 42, 2002, true);
 
-        defaultButton("Đăng nhập", fieldX, 554, 470, 48, ID_LOGIN_SUBMIT);
-        button("Đăng ký tài khoản học sinh", fieldX, 618, 470, 46, ID_MAIN_REGISTER);
+        defaultButton("Đăng nhập", fieldX, 405, 470, 44, ID_LOGIN_SUBMIT);
+        button("Đăng ký tài khoản học sinh", fieldX, 462, 470, 42, ID_MAIN_REGISTER);
 
         HWND passwordHelp = centeredLabel(
             "Quên mật khẩu? Vui lòng liên hệ giáo viên hoặc quản trị viên.",
-            fieldX, 684, 470, 26, smallFont, THEME_MUTED
+            fieldX, 515, 470, 24, smallFont, THEME_MUTED
         );
         surfaceLabels[passwordHelp] = true;
 
         centeredLabel(
             "HCMUTE Quiz App • Học tập, kiểm tra và quản lý lớp học",
-            centerX - 330, 765, 660, 26, smallFont, THEME_MUTED
+            centerX - 330, 555, 660, 24, smallFont, THEME_MUTED
         );
 
         RedrawWindow(
@@ -150,9 +150,11 @@
         SendMessageW(role, WM_SETFONT, (WPARAM)brandFont, TRUE);
         controlTextColors[role] = THEME_MUTED;
         sidebarLabels[role] = true;
-        button("Hướng dẫn", 24, 590, 190, 40, ID_HELP);
-        button("Thông tin", 24, 645, 190, 40, ID_PROFILE);
-        button("Đăng xuất", 24, 700, 190, 40, ID_LOGOUT);
+        if (currentScreen != SCREEN_VIEW) {
+            button("Hướng dẫn", 24, 540, 190, 40, ID_HELP);
+        }
+        button("Thông tin", 24, 590, 190, 40, ID_PROFILE);
+        button("Đăng xuất", 24, 640, 190, 40, ID_LOGOUT);
     }
 
     void showUserGuide() {

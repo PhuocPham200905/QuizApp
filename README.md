@@ -79,6 +79,18 @@ bắt đầu một phần việc mới, luôn cập nhật `main` bằng `git pu
 Ứng dụng C++ kết nối Firestore qua REST API. Các script trong
 `firebase-seed` dùng Firebase Admin SDK để tạo dữ liệu mẫu.
 
+### File đề thi trên nhiều máy
+
+Đường dẫn file chọn từ máy giáo viên chỉ tồn tại trên máy đó. Khi học sinh
+làm bài bằng máy khác, giáo viên cần nhập thêm **Link file đề** công khai.
+App hỗ trợ tải và lưu cache các URL trực tiếp kết thúc bằng `.pdf`, `.docx`,
+`.jpg`, `.jpeg` hoặc `.png`. Các link dạng trang chia sẻ sẽ được mở bằng
+trình duyệt.
+
+Khi học sinh bấm nút **Mở file đề**, lần chuyển cửa sổ do chính thao tác này
+không bị tính là vi phạm. Các lần rời màn hình không bắt đầu từ nút này vẫn
+được ghi vào nhật ký chống gian lận.
+
 Nếu cần chạy script seed:
 
 ```powershell

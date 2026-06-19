@@ -550,7 +550,8 @@ public:
 
     bool updateExamDetails(string examId, string ownerId, string title, int duration,
                            string startAt, string closeAt, string examPassword,
-                           int attemptLimit, int violationLimit, vector<string> questionIds,
+                           string attachmentUrl, int attemptLimit, int violationLimit,
+                           vector<string> questionIds,
                            vector<char> answerKey, bool shuffleQuestions,
                            bool shuffleAnswers) {
         Exam* exam = findExamById(examId);
@@ -564,6 +565,7 @@ public:
         exam->setStartAt(startAt);
         exam->setCloseAt(closeAt);
         exam->setExamPassword(examPassword);
+        exam->setAttachmentUrl(attachmentUrl);
         exam->setAttemptLimit(attemptLimit);
         exam->setViolationLimit(violationLimit);
         exam->setQuestionIds(questionIds);

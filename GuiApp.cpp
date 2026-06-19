@@ -44,6 +44,7 @@ private:
     string activeSessionId;
     int examViolationCount = 0;
     chrono::steady_clock::time_point lastExamViolationAt{};
+    chrono::steady_clock::time_point allowExamViewerFocusLossUntil{};
     bool antiCheatDialogOpen = false;
     bool examSubmissionInProgress = false;
     HWND examTimerLabel = nullptr;
