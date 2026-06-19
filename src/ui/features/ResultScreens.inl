@@ -86,7 +86,7 @@
         GetClientRect(window, &client);
         w = min(w, max(680, (int)client.right - x - 18));
         h = min(h, max(250, (int)client.bottom - y - 18));
-        HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        HWND list = CreateWindowExW(WS_EX_STATICEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
                                    x, y, w, h, window, nullptr, instance, nullptr);
         styleModernListView(list, 34);

@@ -3,26 +3,37 @@
         currentScreen = SCREEN_ADMIN_DASHBOARD;
         title("Bảng điều khiển Admin", "Xin chào " + currentUser->getName());
         addNav("Quản trị viên");
-        button("Học sinh", 24, 120, 190, 40, ID_ADMIN_STUDENTS);
-        button("Giáo viên", 24, 170, 190, 40, ID_ADMIN_TEACHERS);
-        button("Tạo giáo viên", 24, 220, 190, 40, ID_ADMIN_CREATE_TEACHER);
-        button("Câu hỏi", 24, 270, 190, 40, ID_ADMIN_QUESTIONS);
-        button("Đề thi", 24, 320, 190, 40, ID_ADMIN_EXAMS);
-        button("Mở/đóng đề", 24, 370, 190, 40, ID_ADMIN_TOGGLE_EXAM);
-        button("Kết quả", 24, 420, 190, 40, ID_ADMIN_RESULTS);
-        button("Chống gian lận", 24, 470, 190, 40, ID_ADMIN_AUDIT);
+        navButton("Học sinh", 16, 116, 208, 38, ID_ADMIN_STUDENTS);
+        navButton("Giáo viên", 16, 160, 208, 38, ID_ADMIN_TEACHERS);
+        navButton("Tạo giáo viên", 16, 204, 208, 38, ID_ADMIN_CREATE_TEACHER);
+        navButton("Câu hỏi", 16, 248, 208, 38, ID_ADMIN_QUESTIONS);
+        navButton("Đề thi", 16, 292, 208, 38, ID_ADMIN_EXAMS);
+        navButton("Mở/đóng đề", 16, 336, 208, 38, ID_ADMIN_TOGGLE_EXAM);
+        navButton("Kết quả", 16, 380, 208, 38, ID_ADMIN_RESULTS);
+        navButton("Chống gian lận", 16, 424, 208, 38, ID_ADMIN_AUDIT);
 
-        HWND heading = label("Quản trị hệ thống", 280, 125, 360, 32);
-        SendMessageW(heading, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        label("Theo dõi tài khoản, đề thi và kết quả trên toàn bộ lớp học.", 280, 168, 650, 26);
-        defaultButton("Quản lý học sinh", 280, 225, 200, 48, ID_ADMIN_STUDENTS);
-        button("Quản lý giáo viên", 500, 225, 200, 48, ID_ADMIN_TEACHERS);
-        button("Xem kết quả", 720, 225, 170, 48, ID_ADMIN_RESULTS);
+        cardPanel(280, 120, 880, 172);
+        surfaceLabelText("Quản trị hệ thống", 304, 144, 360, 32, brandFont);
+        surfaceLabelText("Theo dõi tài khoản, đề thi và kết quả trên toàn bộ lớp học.",
+                         304, 184, 650, 26, smallFont, THEME_MUTED);
+        defaultButton("Quản lý học sinh", 304, 230, 190, 40, ID_ADMIN_STUDENTS);
+        button("Quản lý giáo viên", 510, 230, 190, 40, ID_ADMIN_TEACHERS);
+        button("Xem kết quả", 716, 230, 150, 40, ID_ADMIN_RESULTS);
 
-        HWND statusTitle = label("Tổng quan hệ thống", 280, 330, 260, 30);
-        SendMessageW(statusTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        edit("Quản lý học sinh, giáo viên, ngân hàng câu hỏi, đề thi và kết quả tại một nơi.",
-             280, 375, 660, 90, 0, false, true, true);
+        cardPanel(280, 324, 270, 150);
+        surfaceLabelText("Tài khoản", 304, 348, 180, 28, brandFont);
+        surfaceLabelText("Học sinh và giáo viên", 304, 384, 210, 24, smallFont, THEME_MUTED);
+        button("Mở danh sách", 304, 420, 150, 36, ID_ADMIN_STUDENTS);
+
+        cardPanel(575, 324, 270, 150);
+        surfaceLabelText("Đề thi", 599, 348, 180, 28, brandFont);
+        surfaceLabelText("Lịch mở đề và trạng thái", 599, 384, 210, 24, smallFont, THEME_MUTED);
+        button("Quản lý đề", 599, 420, 150, 36, ID_ADMIN_EXAMS);
+
+        cardPanel(870, 324, 270, 150);
+        surfaceLabelText("Giám sát", 894, 348, 180, 28, brandFont);
+        surfaceLabelText("Kết quả và chống gian lận", 894, 384, 220, 24, smallFont, THEME_MUTED);
+        button("Xem báo cáo", 894, 420, 150, 36, ID_ADMIN_RESULTS);
     }
 
     void showTeacherDashboard() {
@@ -30,30 +41,39 @@
         currentScreen = SCREEN_TEACHER_DASHBOARD;
         title("Bảng điều khiển Giáo viên", "Xin chào " + currentUser->getName());
         addNav("Giáo viên");
-        button("Câu hỏi", 24, 120, 190, 40, ID_TEACHER_QUESTIONS);
-        button("Thêm câu hỏi", 24, 170, 190, 40, ID_TEACHER_ADD_QUESTION);
-        button("Nhập câu hỏi", 24, 220, 190, 40, ID_TEACHER_IMPORT_QUESTIONS);
-        button("Xóa câu hỏi", 24, 270, 190, 40, ID_TEACHER_DELETE_QUESTION);
-        button("Đề thi", 24, 320, 190, 40, ID_TEACHER_EXAMS);
-        button("Up đề thi", 24, 370, 190, 40, ID_TEACHER_CREATE_EXAM);
-        button("Mở/đóng đề", 24, 420, 190, 40, ID_TEACHER_TOGGLE_EXAM);
-        button("Kết quả", 24, 450, 190, 40, ID_TEACHER_RESULTS);
-        button("Quản lý đề", 24, 495, 190, 40, ID_TEACHER_MANAGE_EXAMS);
+        navButton("Câu hỏi", 16, 116, 208, 38, ID_TEACHER_QUESTIONS);
+        navButton("Thêm câu hỏi", 16, 160, 208, 38, ID_TEACHER_ADD_QUESTION);
+        navButton("Nhập câu hỏi", 16, 204, 208, 38, ID_TEACHER_IMPORT_QUESTIONS);
+        navButton("Xóa câu hỏi", 16, 248, 208, 38, ID_TEACHER_DELETE_QUESTION);
+        navButton("Đề thi", 16, 292, 208, 38, ID_TEACHER_EXAMS);
+        navButton("Up đề thi", 16, 336, 208, 38, ID_TEACHER_CREATE_EXAM);
+        navButton("Mở/đóng đề", 16, 380, 208, 38, ID_TEACHER_TOGGLE_EXAM);
+        navButton("Kết quả", 16, 424, 208, 38, ID_TEACHER_RESULTS);
+        navButton("Quản lý đề", 16, 468, 208, 38, ID_TEACHER_MANAGE_EXAMS);
 
-        HWND heading = label("Tạo và theo dõi bài thi", 280, 125, 420, 32);
-        SendMessageW(heading, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        label("Chuẩn bị ngân hàng câu hỏi, up đề file gốc và xem kết quả học sinh.", 280, 168, 760, 26);
-        defaultButton("Up đề thi", 280, 225, 170, 48, ID_TEACHER_CREATE_EXAM);
-        button("Nhập câu hỏi", 470, 225, 170, 48, ID_TEACHER_IMPORT_QUESTIONS);
-        button("Quản lý đề", 660, 225, 170, 48, ID_TEACHER_MANAGE_EXAMS);
-        button("Tạo bằng AI", 850, 225, 170, 48, ID_TEACHER_AI_QUESTIONS);
+        cardPanel(280, 120, 880, 172);
+        surfaceLabelText("Tạo và theo dõi bài thi", 304, 144, 420, 32, brandFont);
+        surfaceLabelText("Chuẩn bị ngân hàng câu hỏi, tải đề file gốc và xem kết quả học sinh.",
+                         304, 184, 760, 26, smallFont, THEME_MUTED);
+        defaultButton("Up đề thi", 304, 230, 150, 40, ID_TEACHER_CREATE_EXAM);
+        button("Nhập câu hỏi", 470, 230, 150, 40, ID_TEACHER_IMPORT_QUESTIONS);
+        button("Quản lý đề", 636, 230, 150, 40, ID_TEACHER_MANAGE_EXAMS);
+        button("Tạo câu hỏi", 802, 230, 150, 40, ID_TEACHER_AI_QUESTIONS);
 
-        HWND statusTitle = label("Gợi ý quy trình", 280, 330, 260, 30);
-        SendMessageW(statusTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        edit("1. Nhập câu hỏi hoặc chọn file đề gốc.\r\n"
-             "2. Tạo đề thi, đặt giờ mở/đóng và số lượt làm.\r\n"
-             "3. Học sinh làm bài, giáo viên xem kết quả.",
-             280, 375, 660, 140, 0, false, true, true);
+        cardPanel(280, 324, 270, 164);
+        surfaceLabelText("1. Chuẩn bị", 304, 348, 180, 28, brandFont);
+        surfaceLabelText("Nhập câu hỏi hoặc chọn file đề gốc.", 304, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Ngân hàng", 304, 436, 130, 36, ID_TEACHER_QUESTIONS);
+
+        cardPanel(575, 324, 270, 164);
+        surfaceLabelText("2. Tạo đề", 599, 348, 180, 28, brandFont);
+        surfaceLabelText("Đặt thời gian, mật khẩu và số lượt làm.", 599, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Tải đề", 599, 436, 130, 36, ID_TEACHER_CREATE_EXAM);
+
+        cardPanel(870, 324, 270, 164);
+        surfaceLabelText("3. Theo dõi", 894, 348, 180, 28, brandFont);
+        surfaceLabelText("Xem điểm, trạng thái và quản lý đề.", 894, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Kết quả", 894, 436, 130, 36, ID_TEACHER_RESULTS);
     }
 
     void showStudentDashboard() {
@@ -61,23 +81,32 @@
         currentScreen = SCREEN_STUDENT_DASHBOARD;
         title("Bảng điều khiển Học sinh", "Xin chào " + currentUser->getName());
         addNav("Học sinh");
-        button("Đề đang mở", 24, 120, 190, 40, ID_STUDENT_OPEN_EXAMS);
-        button("Làm bài", 24, 170, 190, 40, ID_STUDENT_TAKE_EXAM);
-        button("Lịch sử điểm", 24, 220, 190, 40, ID_STUDENT_RESULTS);
+        navButton("Đề đang mở", 16, 116, 208, 38, ID_STUDENT_OPEN_EXAMS);
+        navButton("Làm bài", 16, 160, 208, 38, ID_STUDENT_TAKE_EXAM);
+        navButton("Lịch sử điểm", 16, 204, 208, 38, ID_STUDENT_RESULTS);
 
-        HWND heading = label("Sẵn sàng làm bài", 280, 125, 360, 32);
-        SendMessageW(heading, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        label("Xem đề đang mở, nhập mã đề và làm bài theo thời gian giáo viên đặt.", 280, 168, 760, 26);
-        defaultButton("Làm bài ngay", 280, 225, 170, 48, ID_STUDENT_TAKE_EXAM);
-        button("Xem đề mở", 470, 225, 170, 48, ID_STUDENT_OPEN_EXAMS);
-        button("Xem điểm", 660, 225, 170, 48, ID_STUDENT_RESULTS);
+        cardPanel(280, 120, 880, 172);
+        surfaceLabelText("Sẵn sàng làm bài", 304, 144, 360, 32, brandFont);
+        surfaceLabelText("Xem đề đang mở, nhập mã đề và làm bài theo thời gian giáo viên đặt.",
+                         304, 184, 760, 26, smallFont, THEME_MUTED);
+        defaultButton("Làm bài ngay", 304, 230, 150, 40, ID_STUDENT_TAKE_EXAM);
+        button("Xem đề mở", 470, 230, 150, 40, ID_STUDENT_OPEN_EXAMS);
+        button("Xem điểm", 636, 230, 150, 40, ID_STUDENT_RESULTS);
 
-        HWND statusTitle = label("Lưu ý khi làm bài", 280, 330, 260, 30);
-        SendMessageW(statusTitle, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        edit("• Chỉ bắt đầu được khi đã tới giờ mở đề.\r\n"
-             "• Nếu đề có mật khẩu, nhập mật khẩu giáo viên cung cấp.\r\n"
-             "• Khi hết giờ, hệ thống tự nộp bài.",
-             280, 375, 660, 140, 0, false, true, true);
+        cardPanel(280, 324, 270, 164);
+        surfaceLabelText("Đề đang mở", 304, 348, 180, 28, brandFont);
+        surfaceLabelText("Kiểm tra danh sách đề có thể làm.", 304, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Xem đề", 304, 436, 130, 36, ID_STUDENT_OPEN_EXAMS);
+
+        cardPanel(575, 324, 270, 164);
+        surfaceLabelText("Trong giờ thi", 599, 348, 180, 28, brandFont);
+        surfaceLabelText("Hệ thống tự nộp khi hết thời gian.", 599, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Bắt đầu", 599, 436, 130, 36, ID_STUDENT_TAKE_EXAM);
+
+        cardPanel(870, 324, 270, 164);
+        surfaceLabelText("Lịch sử điểm", 894, 348, 180, 28, brandFont);
+        surfaceLabelText("Xem lại kết quả các bài đã nộp.", 894, 386, 220, 48, smallFont, THEME_MUTED);
+        button("Xem điểm", 894, 436, 130, 36, ID_STUDENT_RESULTS);
     }
 
     string usersText(string role) {
