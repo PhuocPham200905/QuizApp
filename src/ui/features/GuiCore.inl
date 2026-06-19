@@ -10,7 +10,7 @@
         surfaceBrush = CreateSolidBrush(THEME_SURFACE);
         sidebarBrush = CreateSolidBrush(THEME_SIDEBAR);
         inputBrush = CreateSolidBrush(THEME_SURFACE);
-        loginBackgroundBrush = CreateSolidBrush(RGB(243, 244, 246));
+        loginBackgroundBrush = CreateSolidBrush(THEME_BACKGROUND);
 
         WNDCLASSW wc = {};
         wc.lpfnWndProc = GuiApp::windowProc;
@@ -36,16 +36,16 @@
         cardWc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         RegisterClassW(&cardWc);
 
-        font = CreateFontW(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        font = CreateFontW(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        titleFont = CreateFontW(30, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+        titleFont = CreateFontW(31, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
         brandFont = CreateFontW(22, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        smallFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        smallFont = CreateFontW(15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
@@ -249,6 +249,10 @@ private:
     }
 
     static LRESULT CALLBACK cardPanelProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+        if (message == WM_NCHITTEST) {
+            return HTTRANSPARENT;
+        }
+
         if (message == WM_ERASEBKGND) {
             return 1;
         }
@@ -264,7 +268,7 @@ private:
             HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, fillBrush);
             HPEN oldPen = (HPEN)SelectObject(hdc, borderPen);
 
-            RoundRect(hdc, rect.left, rect.top, rect.right - 1, rect.bottom - 1, 18, 18);
+            RoundRect(hdc, rect.left, rect.top, rect.right - 1, rect.bottom - 1, 8, 8);
 
             SelectObject(hdc, oldPen);
             SelectObject(hdc, oldBrush);
@@ -317,7 +321,7 @@ private:
             HPEN cardPen = CreatePen(PS_SOLID, 1, THEME_BORDER);
             HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, cardBrush);
             HPEN oldPen = (HPEN)SelectObject(hdc, cardPen);
-            RoundRect(hdc, card.left, card.top, card.right, card.bottom, 12, 12);
+            RoundRect(hdc, card.left, card.top, card.right, card.bottom, 8, 8);
             SelectObject(hdc, oldPen);
             SelectObject(hdc, oldBrush);
             DeleteObject(cardPen);
@@ -341,6 +345,7 @@ private:
     void drawModernButton(DRAWITEMSTRUCT* drawInfo) {
         HWND button = drawInfo->hwndItem;
         bool primary = primaryButtons.find(button) != primaryButtons.end() && primaryButtons[button];
+        bool nav = navButtons.find(button) != navButtons.end() && navButtons[button];
         bool pressed = (drawInfo->itemState & ODS_SELECTED) != 0;
         bool focused = (drawInfo->itemState & ODS_FOCUS) != 0;
         bool disabled = (drawInfo->itemState & ODS_DISABLED) != 0;
@@ -348,20 +353,26 @@ private:
         RECT rect = drawInfo->rcItem;
         HDC hdc = drawInfo->hDC;
 
-        COLORREF fillColor = primary ? THEME_PRIMARY : THEME_SURFACE;
-        COLORREF borderColor = primary ? THEME_PRIMARY : THEME_BORDER;
-        COLORREF textColor = primary ? RGB(255, 255, 255) : THEME_TEXT;
+        COLORREF fillColor = primary ? THEME_PRIMARY : (nav ? THEME_SIDEBAR : THEME_SURFACE);
+        COLORREF borderColor = primary ? THEME_PRIMARY : (nav ? THEME_SIDEBAR : THEME_BORDER);
+        COLORREF textColor = primary ? RGB(255, 255, 255) : (nav ? THEME_MUTED : THEME_TEXT);
 
         if (pressed && primary) {
             fillColor = THEME_PRIMARY_HOVER;
             borderColor = THEME_PRIMARY_HOVER;
         } else if (pressed) {
-            fillColor = RGB(226, 232, 240);
+            fillColor = THEME_PRESSED;
+            borderColor = nav ? THEME_PRESSED : borderColor;
+            textColor = nav ? THEME_TEXT : textColor;
+        } else if (focused && nav) {
+            fillColor = THEME_PRESSED;
+            borderColor = THEME_PRESSED;
+            textColor = THEME_TEXT;
         }
         if (disabled) {
-            fillColor = RGB(226, 232, 240);
-            borderColor = RGB(203, 213, 225);
-            textColor = RGB(100, 116, 139);
+            fillColor = THEME_DISABLED;
+            borderColor = THEME_DISABLED;
+            textColor = THEME_MUTED;
         }
 
         HBRUSH fillBrush = CreateSolidBrush(fillColor);
@@ -372,7 +383,7 @@ private:
         int offset = pressed ? 1 : 0;
         RECT buttonRect = rect;
         InflateRect(&buttonRect, -1, -1);
-        RoundRect(hdc, buttonRect.left, buttonRect.top, buttonRect.right, buttonRect.bottom, 8, 8);
+        RoundRect(hdc, buttonRect.left, buttonRect.top, buttonRect.right, buttonRect.bottom, 6, 6);
 
         SelectObject(hdc, oldBrush);
         SelectObject(hdc, oldPen);
@@ -386,7 +397,15 @@ private:
         HFONT oldFont = (HFONT)SelectObject(hdc, font);
         RECT textRect = rect;
         OffsetRect(&textRect, offset, offset);
-        DrawTextW(hdc, text, -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        if (nav) {
+            textRect.left += 16;
+            textRect.right -= 12;
+            HFONT oldNavFont = (HFONT)SelectObject(hdc, smallFont);
+            DrawTextW(hdc, text, -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            SelectObject(hdc, oldNavFont);
+        } else {
+            DrawTextW(hdc, text, -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        }
         SelectObject(hdc, oldFont);
     }
 
@@ -405,14 +424,14 @@ private:
         bool compactBubble = wcslen(text) <= 2;
 
         COLORREF fillColor = checked ? THEME_PRIMARY : THEME_SURFACE;
-        COLORREF borderColor = checked ? THEME_PRIMARY : RGB(148, 163, 184);
+        COLORREF borderColor = checked ? THEME_PRIMARY : THEME_BORDER;
         COLORREF textColor = checked ? RGB(255, 255, 255) : THEME_TEXT;
 
         if (checked && pressed) {
             fillColor = THEME_PRIMARY_HOVER;
             borderColor = THEME_PRIMARY_HOVER;
         } else if (!checked && pressed) {
-            fillColor = RGB(219, 234, 254);
+            fillColor = THEME_PRESSED;
             borderColor = THEME_PRIMARY;
         } else if (!checked && focused) {
             borderColor = THEME_PRIMARY;
@@ -437,7 +456,7 @@ private:
             };
             Ellipse(hdc, circle.left, circle.top, circle.right, circle.bottom);
         } else {
-            RoundRect(hdc, buttonRect.left, buttonRect.top, buttonRect.right, buttonRect.bottom, 9, 9);
+            RoundRect(hdc, buttonRect.left, buttonRect.top, buttonRect.right, buttonRect.bottom, 8, 8);
         }
 
         SelectObject(hdc, oldBrush);
@@ -720,6 +739,7 @@ private:
         lastExamViolationAt = chrono::steady_clock::time_point{};
         examTimerLabel = nullptr;
         primaryButtons.clear();
+        navButtons.clear();
         answerChoiceButtons.clear();
         controlTextColors.clear();
         surfaceLabels.clear();
@@ -756,13 +776,16 @@ private:
         wstring wideText = utf8ToWide(text);
         DWORD exStyle = 0;
         if (cls == "EDIT") {
-            exStyle = WS_EX_CLIENTEDGE;
+            exStyle = WS_EX_STATICEDGE;
         }
 
         HWND control = CreateWindowExW(exStyle, wideClass.c_str(), wideText.c_str(),
                                       baseStyle | style,
                                       x, y, w, h, window, (HMENU)(INT_PTR)id, instance, nullptr);
         SendMessageW(control, WM_SETFONT, (WPARAM)font, TRUE);
+        if (cls == "EDIT") {
+            SendMessageW(control, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(10, 10));
+        }
         controls.push_back(control);
         return control;
     }
@@ -783,7 +806,7 @@ private:
 
     HWND cardPanel(int x, int y, int w, int h) {
         HWND control = CreateWindowExW(0, L"QuizCardPanel", L"",
-                                      WS_CHILD | WS_VISIBLE,
+                                      WS_CHILD | WS_VISIBLE | WS_DISABLED,
                                       x, y, w, h, window, nullptr, instance, nullptr);
         SetWindowPos(control, HWND_BOTTOM, x, y, w, h, SWP_NOACTIVATE);
         controls.push_back(control);
@@ -796,9 +819,28 @@ private:
         return control;
     }
 
+    HWND navButton(string text, int x, int y, int w, int h, int id) {
+        HWND control = addControl("BUTTON", text, BS_OWNERDRAW, x, y, w, h, id, true);
+        primaryButtons[control] = false;
+        navButtons[control] = true;
+        SendMessageW(control, WM_SETFONT, (WPARAM)smallFont, TRUE);
+        return control;
+    }
+
     HWND defaultButton(string text, int x, int y, int w, int h, int id) {
         HWND control = addControl("BUTTON", text, BS_OWNERDRAW, x, y, w, h, id, true);
         primaryButtons[control] = true;
+        return control;
+    }
+
+    HWND surfaceLabelText(string text, int x, int y, int w, int h, HFONT labelFont = nullptr,
+                          COLORREF textColor = THEME_TEXT) {
+        HWND control = label(text, x, y, w, h);
+        if (labelFont != nullptr) {
+            SendMessageW(control, WM_SETFONT, (WPARAM)labelFont, TRUE);
+        }
+        controlTextColors[control] = textColor;
+        surfaceLabels[control] = true;
         return control;
     }
 
@@ -1213,7 +1255,7 @@ private:
 
     HWND examListView(int x, int y, int w, int h, bool onlyOpen) {
         w = max(w, 1000);
-        HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        HWND list = CreateWindowExW(WS_EX_STATICEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
                                    x, y, w, h, window, nullptr, instance, nullptr);
         styleModernListView(list, 34);
@@ -1273,7 +1315,7 @@ private:
     HWND userListView(int x, int y, int w, int h, string role, string keyword = "") {
         w = max(w, 920);
         h = max(h, 360);
-        HWND list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        HWND list = CreateWindowExW(WS_EX_STATICEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
                                    x, y, w, h, window, nullptr, instance, nullptr);
         styleModernListView(list, 34);
@@ -1349,7 +1391,7 @@ private:
         SendMessageW(list, WM_SETFONT, (WPARAM)font, TRUE);
         ListView_SetExtendedListViewStyle(
             list,
-            LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP | LVS_EX_GRIDLINES
+            LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP
         );
         ListView_SetBkColor(list, THEME_SURFACE);
         ListView_SetTextBkColor(list, THEME_SURFACE);

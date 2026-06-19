@@ -33,12 +33,12 @@
 
         centeredLabel(
             "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ KỸ THUẬT TP.HCM",
-            centerX - 330, 164, 660, 54, brandFont, RGB(8, 47, 89)
+            centerX - 330, 164, 660, 54, brandFont, THEME_TEXT
         );
 
         HWND formTitle = label("ĐĂNG NHẬP", fieldX, 270, 470, 42);
         SendMessageW(formTitle, WM_SETFONT, (WPARAM)titleFont, TRUE);
-        controlTextColors[formTitle] = RGB(30, 83, 148);
+        controlTextColors[formTitle] = THEME_TEXT;
         surfaceLabels[formTitle] = true;
 
         HWND subtitle = label("Hệ thống quản lý và thi trắc nghiệm", fieldX + 2, 316, 470, 26);
@@ -148,11 +148,11 @@
     void addNav(string roleTitle) {
         HWND role = label(roleTitle, 24, 68, 190, 28);
         SendMessageW(role, WM_SETFONT, (WPARAM)brandFont, TRUE);
-        controlTextColors[role] = THEME_MUTED;
+        controlTextColors[role] = THEME_TEXT;
         sidebarLabels[role] = true;
-        button("Hướng dẫn", 24, 590, 190, 40, ID_HELP);
-        button("Thông tin", 24, 645, 190, 40, ID_PROFILE);
-        button("Đăng xuất", 24, 700, 190, 40, ID_LOGOUT);
+        navButton("Hướng dẫn", 16, 590, 208, 38, ID_HELP);
+        navButton("Thông tin", 16, 638, 208, 38, ID_PROFILE);
+        navButton("Đăng xuất", 16, 686, 208, 38, ID_LOGOUT);
     }
 
     void showUserGuide() {

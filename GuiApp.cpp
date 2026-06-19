@@ -6,14 +6,16 @@
 
 class GuiApp {
 private:
-    static constexpr COLORREF THEME_BACKGROUND = RGB(248, 250, 252);
+    static constexpr COLORREF THEME_BACKGROUND = RGB(245, 246, 247);
     static constexpr COLORREF THEME_SURFACE = RGB(255, 255, 255);
-    static constexpr COLORREF THEME_SIDEBAR = RGB(239, 246, 255);
-    static constexpr COLORREF THEME_BORDER = RGB(203, 213, 225);
-    static constexpr COLORREF THEME_TEXT = RGB(15, 23, 42);
-    static constexpr COLORREF THEME_MUTED = RGB(71, 85, 105);
+    static constexpr COLORREF THEME_SIDEBAR = RGB(255, 255, 255);
+    static constexpr COLORREF THEME_BORDER = RGB(227, 229, 232);
+    static constexpr COLORREF THEME_TEXT = RGB(26, 26, 26);
+    static constexpr COLORREF THEME_MUTED = RGB(107, 113, 120);
     static constexpr COLORREF THEME_PRIMARY = RGB(37, 99, 235);
     static constexpr COLORREF THEME_PRIMARY_HOVER = RGB(29, 78, 216);
+    static constexpr COLORREF THEME_PRESSED = RGB(241, 243, 245);
+    static constexpr COLORREF THEME_DISABLED = RGB(227, 229, 232);
 
     HINSTANCE instance;
     HWND window = nullptr;
@@ -38,6 +40,7 @@ private:
     vector<IPreviewHandler*> previewHandlers;
     map<HWND, IPreviewHandler*> previewHandlerByHost;
     map<HWND, bool> primaryButtons;
+    map<HWND, bool> navButtons;
     map<HWND, bool> answerChoiceButtons;
     map<HWND, COLORREF> controlTextColors;
     map<HWND, bool> surfaceLabels;
