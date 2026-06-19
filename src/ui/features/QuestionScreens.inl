@@ -44,25 +44,67 @@
         edit(aiQuestionRequest.extraNotes, x + 455, y - 4,
              max(180, panelWidth - 455), 30, 8506);
 
-        defaultButton("Sinh câu hỏi", x, y + 40, 130, 34, ID_AI_GENERATE_QUESTIONS);
-        button("Cập nhật preview", x + 140, y + 40, 140, 34, ID_AI_REFRESH_PREVIEW);
-        button("Lưu tất cả", x + 290, y + 40, 105, 34, ID_AI_SAVE_ALL);
-        label("Câu số", x + 405, y + 45, 58, 24);
-        edit("1", x + 465, y + 42, 45, 30, 8507);
-        button("Lưu 1 câu", x + 520, y + 40, 105, 34, ID_AI_SAVE_ONE);
-        button("Quay lại", x + 635, y + 40, 85, 34, ID_DASHBOARD);
+        int keyInputWidth = max(220, panelWidth - 390);
+        label("Groq API key", x, y + 43, 95, 26);
+        edit("", x + 100, y + 39, keyInputWidth, 30, 8510, true);
+        button("Lưu key", x + 110 + keyInputWidth, y + 38, 105, 34, ID_AI_SAVE_API_KEY);
+        button("Xóa key", x + 225 + keyInputWidth, y + 38, 95, 34, ID_AI_CLEAR_API_KEY);
+
+        defaultButton("Sinh câu hỏi", x, y + 80, 130, 34, ID_AI_GENERATE_QUESTIONS);
+        button("Cập nhật preview", x + 140, y + 80, 140, 34, ID_AI_REFRESH_PREVIEW);
+        button("Lưu tất cả", x + 290, y + 80, 105, 34, ID_AI_SAVE_ALL);
+        label("Câu số", x + 405, y + 85, 58, 24);
+        edit("1", x + 465, y + 82, 45, 30, 8507);
+        button("Lưu 1 câu", x + 520, y + 80, 105, 34, ID_AI_SAVE_ONE);
+        button("Quay lại", x + 635, y + 80, 85, 34, ID_DASHBOARD);
 
         string status = aiQuestionStatus.empty()
-                            ? "Mặc định dùng mock để demo. Đặt QUIZAPP_AI_MODE=real cùng endpoint/API key để gọi AI thật."
+                            ? aiQuestionService.configurationStatus() +
+                                  " Hỗ trợ bàn phím tiếng Việt Telex/VNI của Windows."
                             : aiQuestionStatus;
-        edit(status, x, y + 82, panelWidth, 38, 8508, false, true, true);
+        edit(status, x, y + 122, panelWidth, 38, 8508, false, true, true);
 
-        aiQuestionDraftListView(x, y + 128, panelWidth, 145);
+        aiQuestionDraftListView(x, y + 168, panelWidth, 125);
 
-        label("JSON có thể chỉnh sửa", x, y + 282, 210, 24);
+        label("JSON có thể chỉnh sửa", x, y + 302, 210, 24);
         edit(aiQuestionService.draftsToJson(generatedQuestionDrafts),
-             x, y + 308, panelWidth, 95, 8509, false, true, false);
+             x, y + 328, panelWidth, 82, 8509, false, true, false);
         setFocusTo(8503);
+    }
+
+    void saveAiApiKeyFromUi() {
+        string apiKey = getText(8510);
+        if (!aiQuestionService.saveApiKey(apiKey)) {
+            error(aiQuestionService.getLastError());
+            return;
+        }
+
+        HWND keyBox = GetDlgItem(window, 8510);
+        if (keyBox != nullptr) {
+            SetWindowTextW(keyBox, L"");
+        }
+        aiQuestionStatus =
+            "Đã lưu API key an toàn trên máy này. Từ lần sinh câu hỏi tiếp theo, app sẽ dùng AI thật.";
+        HWND statusBox = GetDlgItem(window, 8508);
+        if (statusBox != nullptr) {
+            setControlText(statusBox, aiQuestionStatus);
+        }
+        message("Đã lưu API key. Giáo viên không cần chạy lệnh setx.");
+    }
+
+    void clearAiApiKeyFromUi() {
+        if (!aiQuestionService.clearApiKey()) {
+            error(aiQuestionService.getLastError());
+            return;
+        }
+
+        aiQuestionStatus =
+            "Đã xóa API key khỏi máy này. App sẽ dùng dữ liệu mẫu cho đến khi lưu key mới.";
+        HWND statusBox = GetDlgItem(window, 8508);
+        if (statusBox != nullptr) {
+            setControlText(statusBox, aiQuestionStatus);
+        }
+        message("Đã xóa API key đã lưu trên máy.");
     }
 
     void submitGenerateAiQuestions() {

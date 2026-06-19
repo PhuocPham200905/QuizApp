@@ -34,6 +34,10 @@ private:
 
 public:
     AIQuestionResult generateQuestions(const AIQuestionRequest& request);
+    bool saveApiKey(const string& apiKey);
+    bool clearApiKey();
+    bool hasSavedApiKey() const;
+    string configurationStatus() const;
     string buildPrompt(const AIQuestionRequest& request) const;
     bool parseGeneratedQuestions(const string& responseText,
                                  vector<GeneratedQuestionDraft>& questions,
@@ -44,6 +48,7 @@ public:
 
 private:
     bool shouldUseMock() const;
+    string savedApiKey() const;
     vector<GeneratedQuestionDraft> mockQuestions(const AIQuestionRequest& request) const;
     bool callRealApi(const AIQuestionRequest& request, const string& prompt, string& response);
     bool parseQuestionsObject(const json& root,

@@ -1,5 +1,9 @@
 #include "AIQuestionService.h"
 
+namespace {
+const wchar_t* AI_CREDENTIAL_TARGET = L"HCMUTEQuizApp/GroqApiKey";
+}
+
 AIQuestionResult AIQuestionService::generateQuestions(const AIQuestionRequest& request) {
     AIQuestionResult result;
     result.prompt = buildPrompt(request);
@@ -38,29 +42,30 @@ AIQuestionResult AIQuestionService::generateQuestions(const AIQuestionRequest& r
 string AIQuestionService::buildPrompt(const AIQuestionRequest& request) const {
     stringstream prompt;
     prompt
-        << "Ban la tro ly tao cau hoi trac nghiem cho giao vien Viet Nam.\n"
-        << "Hay tao dung " << request.count << " cau hoi cho hoc sinh lop/khoi "
+        << "Bạn là trợ lý tạo câu hỏi trắc nghiệm cho giáo viên Việt Nam.\n"
+        << "Hãy tạo đúng " << request.count << " câu hỏi cho học sinh lớp/khối "
         << request.grade << ".\n"
-        << "Mon hoc: " << request.subject << "\n"
-        << "Chu de/noi dung: " << request.topic << "\n"
-        << "Do kho: " << request.difficulty << "\n";
+        << "Môn học: " << request.subject << "\n"
+        << "Chủ đề/nội dung: " << request.topic << "\n"
+        << "Độ khó: " << request.difficulty << "\n";
 
     if (!request.extraNotes.empty()) {
-        prompt << "Ghi chu them: " << request.extraNotes << "\n";
+        prompt << "Ghi chú thêm: " << request.extraNotes << "\n";
     }
 
     prompt
-        << "Yeu cau chat luong:\n"
-        << "- Moi cau hoi phai ro rang, phu hop lua tuoi, khong mo ho.\n"
-        << "- Moi cau hoi co dung 4 dap an A/B/C/D.\n"
-        << "- Chi co mot dap an dung.\n"
-        << "- Khong tao cau hoi meo, khong can kien thuc ngoai chu de.\n"
-        << "- Khong kem giai thich, khong Markdown.\n"
-        << "Chi tra ve JSON hop le theo dung schema sau:\n"
+        << "Yêu cầu chất lượng:\n"
+        << "- Mỗi câu hỏi phải rõ ràng, phù hợp lứa tuổi, không mơ hồ.\n"
+        << "- Mỗi câu hỏi có đúng 4 đáp án A/B/C/D.\n"
+        << "- Chỉ có một đáp án đúng.\n"
+        << "- Không tạo câu hỏi mẹo, không cần kiến thức ngoài chủ đề.\n"
+        << "- Viết đầy đủ dấu tiếng Việt.\n"
+        << "- Không kèm giải thích, không Markdown.\n"
+        << "Chỉ trả về JSON hợp lệ theo đúng schema sau:\n"
         << "{\n"
         << "  \"questions\": [\n"
         << "    {\n"
-        << "      \"content\": \"Cau hoi...\",\n"
+        << "      \"content\": \"Câu hỏi...\",\n"
         << "      \"options\": [\"...\", \"...\", \"...\", \"...\"],\n"
         << "      \"correctAnswer\": \"A\",\n"
         << "      \"difficulty\": \"" << request.difficulty << "\",\n"
@@ -77,7 +82,7 @@ bool AIQuestionService::parseGeneratedQuestions(const string& responseText,
     questions.clear();
     string cleaned = cleanJsonText(responseText);
     if (cleaned.empty()) {
-        errorMessage = "AI khong tra ve noi dung nao.";
+        errorMessage = "AI không trả về nội dung nào.";
         return false;
     }
 
@@ -98,7 +103,7 @@ bool AIQuestionService::parseGeneratedQuestions(const string& responseText,
     }
 
     if (errorMessage.empty()) {
-        errorMessage = "AI tra ve sai dinh dang. Can co mang questions.";
+        errorMessage = "AI trả về sai định dạng. Cần có mảng questions.";
     }
     return false;
 }
@@ -149,11 +154,101 @@ string AIQuestionService::getLastError() const {
     return lastError;
 }
 
+bool AIQuestionService::saveApiKey(const string& apiKey) {
+    string trimmed = apiKey;
+    trimmed.erase(trimmed.begin(),
+                  find_if(trimmed.begin(), trimmed.end(),
+                          [](unsigned char ch) { return !isspace(ch); }));
+    trimmed.erase(find_if(trimmed.rbegin(), trimmed.rend(),
+                          [](unsigned char ch) { return !isspace(ch); }).base(),
+                  trimmed.end());
+
+    if (trimmed.size() < 20 || trimmed.rfind("gsk_", 0) != 0) {
+        lastError = "API key Groq không hợp lệ. Key thường bắt đầu bằng gsk_.";
+        return false;
+    }
+
+    CREDENTIALW credential = {};
+    credential.Type = CRED_TYPE_GENERIC;
+    credential.TargetName = const_cast<LPWSTR>(AI_CREDENTIAL_TARGET);
+    credential.CredentialBlobSize = static_cast<DWORD>(trimmed.size());
+    credential.CredentialBlob =
+        reinterpret_cast<LPBYTE>(const_cast<char*>(trimmed.data()));
+    credential.Persist = CRED_PERSIST_LOCAL_MACHINE;
+    credential.UserName = const_cast<LPWSTR>(L"Groq");
+
+    if (!CredWriteW(&credential, 0)) {
+        lastError = "Windows không lưu được API key. Mã lỗi: " +
+                    to_string(GetLastError()) + ".";
+        return false;
+    }
+
+    lastError.clear();
+    return true;
+}
+
+bool AIQuestionService::clearApiKey() {
+    if (CredDeleteW(AI_CREDENTIAL_TARGET, CRED_TYPE_GENERIC, 0)) {
+        lastError.clear();
+        return true;
+    }
+
+    DWORD errorCode = GetLastError();
+    if (errorCode == ERROR_NOT_FOUND) {
+        lastError.clear();
+        return true;
+    }
+
+    lastError = "Windows không xóa được API key. Mã lỗi: " +
+                to_string(errorCode) + ".";
+    return false;
+}
+
+bool AIQuestionService::hasSavedApiKey() const {
+    return !savedApiKey().empty();
+}
+
+string AIQuestionService::configurationStatus() const {
+    if (!envValue("QUIZAPP_AI_API_KEY").empty() ||
+        !envValue("GROQ_API_KEY").empty()) {
+        return "AI thật đã sẵn sàng bằng cấu hình hệ thống.";
+    }
+    if (hasSavedApiKey()) {
+        return "AI thật đã sẵn sàng. API key được lưu an toàn trên máy này.";
+    }
+    return "Chưa có API key. Hãy dán key Groq bên dưới; app đang dùng dữ liệu mẫu.";
+}
+
 bool AIQuestionService::shouldUseMock() const {
     string mode = envValue("QUIZAPP_AI_MODE");
     transform(mode.begin(), mode.end(), mode.begin(),
               [](unsigned char ch) { return (char)tolower(ch); });
-    return mode != "real";
+    if (mode == "mock") {
+        return true;
+    }
+    if (mode == "real") {
+        return false;
+    }
+    return envValue("QUIZAPP_AI_API_KEY").empty() &&
+           envValue("GROQ_API_KEY").empty() &&
+           !hasSavedApiKey();
+}
+
+string AIQuestionService::savedApiKey() const {
+    PCREDENTIALW credential = nullptr;
+    if (!CredReadW(AI_CREDENTIAL_TARGET, CRED_TYPE_GENERIC, 0, &credential)) {
+        return "";
+    }
+
+    string apiKey;
+    if (credential->CredentialBlob != nullptr &&
+        credential->CredentialBlobSize > 0) {
+        apiKey.assign(
+            reinterpret_cast<const char*>(credential->CredentialBlob),
+            credential->CredentialBlobSize);
+    }
+    CredFree(credential);
+    return apiKey;
 }
 
 vector<GeneratedQuestionDraft> AIQuestionService::mockQuestions(const AIQuestionRequest& request) const {
@@ -165,8 +260,9 @@ vector<GeneratedQuestionDraft> AIQuestionService::mockQuestions(const AIQuestion
         GeneratedQuestionDraft draft;
         draft.subject = request.subject.empty() ? "Môn học" : request.subject;
         draft.difficulty = request.difficulty.empty() ? "Trung bình" : request.difficulty;
-        draft.content = "Cau " + to_string(i + 1) + ": Noi dung nao phu hop voi chu de \"" +
-                        (request.topic.empty() ? "bai hoc" : request.topic) + "\"?";
+        draft.content = "Câu " + to_string(i + 1) +
+                        ": Nội dung nào phù hợp với chủ đề \"" +
+                        (request.topic.empty() ? "bài học" : request.topic) + "\"?";
         draft.options = {
             "Phương án đúng theo kiến thức bài học",
             "Phương án gần đúng nhưng thiếu ý quan trọng",
@@ -188,11 +284,14 @@ bool AIQuestionService::callRealApi(const AIQuestionRequest& request,
     if (apiKey.empty()) {
         apiKey = envValue("GROQ_API_KEY");
     }
+    if (apiKey.empty()) {
+        apiKey = savedApiKey();
+    }
     if (endpoint.empty()) {
         endpoint = "https://api.groq.com/openai/v1/chat/completions";
     }
     if (apiKey.empty()) {
-        lastError = "Chưa cấu hình AI thật. Hãy đặt GROQ_API_KEY hoặc QUIZAPP_AI_API_KEY, rồi đặt QUIZAPP_AI_MODE=real.";
+        lastError = "Chưa có API key Groq. Hãy nhập key ngay trong màn hình tạo câu hỏi AI.";
         return false;
     }
 
@@ -209,7 +308,7 @@ bool AIQuestionService::callRealApi(const AIQuestionRequest& request,
     body["messages"] = json::array({
         {
             {"role", "system"},
-            {"content", "Ban chi tra ve JSON hop le, khong Markdown, khong giai thich."}
+            {"content", "Bạn chỉ trả về JSON hợp lệ, viết đầy đủ dấu tiếng Việt, không Markdown, không giải thích."}
         },
         {
             {"role", "user"},
@@ -250,11 +349,11 @@ bool AIQuestionService::callRealApi(const AIQuestionRequest& request,
     curl_easy_cleanup(curl);
 
     if (result != CURLE_OK) {
-        lastError = string("Loi ket noi AI: ") + curl_easy_strerror(result);
+        lastError = string("Lỗi kết nối AI: ") + curl_easy_strerror(result);
         return false;
     }
     if (statusCode < 200 || statusCode >= 300) {
-        lastError = "AI tra ve HTTP " + to_string(statusCode) + ": " + response;
+        lastError = "AI trả về HTTP " + to_string(statusCode) + ": " + response;
         return false;
     }
     return true;
@@ -264,23 +363,23 @@ bool AIQuestionService::parseQuestionsObject(const json& root,
                                              vector<GeneratedQuestionDraft>& questions,
                                              string& errorMessage) const {
     if (!root.is_object() || !root.contains("questions") || !root.at("questions").is_array()) {
-        errorMessage = "AI tra ve sai dinh dang. Can co mang questions.";
+        errorMessage = "AI trả về sai định dạng. Cần có mảng questions.";
         return false;
     }
 
     for (const json& item : root.at("questions")) {
         if (!item.is_object()) {
-            errorMessage = "Mot cau hoi AI tra ve khong phai object.";
+            errorMessage = "Một câu hỏi AI trả về không phải object.";
             return false;
         }
         if (!item.contains("content") || !item.contains("options") ||
             !item.contains("correctAnswer") || !item.contains("subject") ||
             !item.contains("difficulty")) {
-            errorMessage = "Mot cau hoi AI tra ve bi thieu truong.";
+            errorMessage = "Một câu hỏi AI trả về bị thiếu trường.";
             return false;
         }
         if (!item.at("options").is_array() || item.at("options").size() != 4) {
-            errorMessage = "Moi cau hoi phai co dung 4 dap an.";
+            errorMessage = "Mỗi câu hỏi phải có đúng 4 đáp án.";
             return false;
         }
 
@@ -303,7 +402,7 @@ bool AIQuestionService::parseQuestionsObject(const json& root,
     }
 
     if (questions.empty()) {
-        errorMessage = "AI khong tao cau hoi nao.";
+        errorMessage = "AI không tạo câu hỏi nào.";
         return false;
     }
     return true;

@@ -612,36 +612,73 @@
             return;
         }
 
+        RECT examClient = {};
+        GetClientRect(window, &examClient);
+        RECT examWindow = {};
+        GetWindowRect(window, &examWindow);
+        int visibleClientWidth = max(760, (int)(examWindow.right - examWindow.left) - 16);
+        int visibleClientHeight = max(560, (int)(examWindow.bottom - examWindow.top) - 40);
+        int layoutWidth = min((int)examClient.right, visibleClientWidth);
+        int layoutHeight = min((int)examClient.bottom, visibleClientHeight);
+        int contentLeft = 270;
+        int contentRight = max(contentLeft + 700, layoutWidth - 36);
+        int contentWidth = contentRight - contentLeft;
+        int columnGap = 20;
+        int optionWidth = min(410, (contentWidth - 30 - columnGap) / 2);
+        int optionLeft = contentLeft + 30;
+        int secondColumnLeft = optionLeft + optionWidth + columnGap;
+        int actionY = min(560, max(520, layoutHeight - 80));
+        int availableQuestionHeight = max(360, actionY - y - 16);
+        int questionBlockHeight = examQuestions.empty()
+                                      ? 96
+                                      : min(104, max(84, availableQuestionHeight /
+                                                            (int)examQuestions.size()));
+        int optionRowGap = 5;
+        int questionToOptionsGap = 26;
+        int optionHeight = min(32, max(25, (questionBlockHeight -
+                                            questionToOptionsGap - optionRowGap - 4) / 2));
+
         for (int questionIndex = 0; questionIndex < (int)examQuestions.size(); questionIndex++) {
             Question* question = examQuestions[questionIndex];
-            if (question == nullptr || y > 650) continue;
+            if (question == nullptr || y + questionBlockHeight > actionY) continue;
 
             string line = to_string(index) + ". " + question->getContent();
-            HWND questionLabel = label(line, 270, y, 880, 28);
+            HWND questionLabel = label(line, contentLeft, y, contentWidth, 26);
             SendMessageW(questionLabel, WM_SETFONT, (WPARAM)brandFont, TRUE);
-            y += 36;
+            int optionY = y + questionToOptionsGap;
             if (question->hasImage() && !question->getImagePath().empty()) {
-                HWND image = imageBox(question->getImagePath(), 300, y, 320, 120);
+                int imageHeight = max(60, questionBlockHeight - 74);
+                HWND image = imageBox(question->getImagePath(), optionLeft, optionY, 260, imageHeight);
                 if (image != nullptr) {
-                    y += 132;
+                    optionY += imageHeight + 8;
                 }
             }
             array<string, 4> options = displayedOptions[questionIndex];
             array<HWND, 4> buttons = {
-                answerChoiceButton("A. " + options[0], 300, y, 410, 34, 5300 + index * 10 + 0, true),
-                answerChoiceButton("B. " + options[1], 730, y, 410, 34, 5300 + index * 10 + 1, false),
-                answerChoiceButton("C. " + options[2], 300, y + 42, 410, 34, 5300 + index * 10 + 2, false),
-                answerChoiceButton("D. " + options[3], 730, y + 42, 410, 34, 5300 + index * 10 + 3, false),
+                answerChoiceButton("A. " + options[0], optionLeft, optionY, optionWidth, optionHeight,
+                                   5300 + index * 10 + 0, true),
+                answerChoiceButton("B. " + options[1], secondColumnLeft, optionY, optionWidth, optionHeight,
+                                   5300 + index * 10 + 1, false),
+                answerChoiceButton("C. " + options[2], optionLeft,
+                                   optionY + optionHeight + optionRowGap, optionWidth, optionHeight,
+                                   5300 + index * 10 + 2, false),
+                answerChoiceButton("D. " + options[3], secondColumnLeft,
+                                   optionY + optionHeight + optionRowGap, optionWidth, optionHeight,
+                                   5300 + index * 10 + 3, false),
             };
             answerOptions.push_back(buttons);
             activeAnswerValues.push_back(displayedAnswerValues[questionIndex]);
             activeQuestionIds.push_back(question->getQuestionId());
-            y += 94;
+            y += questionBlockHeight;
             index++;
         }
 
-        defaultButton("Nộp bài", 720, 560, 120, 36, ID_TAKE_EXAM_SUBMIT);
-        button("Về dashboard", 560, 560, 145, 36, ID_DASHBOARD);
+        int submitWidth = 130;
+        int backWidth = 150;
+        int backX = 560;
+        int submitX = 720;
+        button("Về dashboard", backX, actionY, backWidth, 38, ID_DASHBOARD);
+        defaultButton("Nộp bài", submitX, actionY, submitWidth, 38, ID_TAKE_EXAM_SUBMIT);
         if (!answerOptions.empty()) {
             SetFocus(answerOptions[0][0]);
         }
@@ -1098,10 +1135,40 @@
         data.updateExamSession(activeSessionId, "IN_PROGRESS", examViolationCount, reason);
 
         if (examViolationCount >= violationLimit) {
+            pendingExamAutoSubmit = true;
+            pendingExamViolationNotice = false;
+            if (examAppActive) {
+                showPendingExamViolationNotice();
+            }
+            return;
+        }
+
+        pendingExamViolationNotice = true;
+        if (examAppActive) {
+            showPendingExamViolationNotice();
+        }
+    }
+
+    void showPendingExamViolationNotice() {
+        if (currentScreen != SCREEN_TAKE_EXAM_FORM || antiCheatDialogOpen ||
+            examSubmissionInProgress) {
+            return;
+        }
+
+        if (pendingExamAutoSubmit) {
+            pendingExamAutoSubmit = false;
+            pendingExamViolationNotice = false;
             submitTakeExam(false, true);
             return;
         }
 
+        if (!pendingExamViolationNotice) {
+            return;
+        }
+
+        pendingExamViolationNotice = false;
+        Exam* exam = data.findExamById(activeExamId);
+        int violationLimit = exam == nullptr ? 3 : max(1, exam->getViolationLimit());
         string warning = "Bạn vừa rời khỏi màn hình thi hoặc thực hiện thao tác bị hạn chế.\n\n"
                          "Số lần vi phạm: " + to_string(examViolationCount) + "/" +
                          to_string(violationLimit) +

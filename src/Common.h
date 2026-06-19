@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <wincred.h>
+#include <imm.h>
 #include <commctrl.h>
 #include <commdlg.h>
 #include <shobjidl.h>

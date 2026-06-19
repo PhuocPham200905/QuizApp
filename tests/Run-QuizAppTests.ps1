@@ -39,6 +39,9 @@ public static class QuizAppTestInterop
     [DllImport("user32.dll")]
     public static extern bool EnumChildWindows(IntPtr hwnd, EnumProc callback, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumProc callback, IntPtr lParam);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int GetClassName(IntPtr hwnd, StringBuilder text, int max);
 
@@ -47,6 +50,15 @@ public static class QuizAppTestInterop
 
     [DllImport("user32.dll")]
     public static extern int GetDlgCtrlID(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
@@ -169,6 +181,46 @@ public static class QuizAppTestInterop
         return true;
     }
 
+    public static IntPtr FindTopLevelWindow(uint processId, string title)
+    {
+        IntPtr result = IntPtr.Zero;
+        EnumWindows((hwnd, _) =>
+        {
+            uint owner;
+            GetWindowThreadProcessId(hwnd, out owner);
+            if (owner != processId)
+            {
+                return true;
+            }
+
+            var text = new StringBuilder(256);
+            GetWindowText(hwnd, text, text.Capacity);
+            if (text.ToString().Equals(title, StringComparison.Ordinal))
+            {
+                result = hwnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+
+    public static string ChildText(IntPtr parent)
+    {
+        var values = new List<string>();
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            var text = new StringBuilder(1024);
+            GetWindowText(hwnd, text, text.Capacity);
+            if (text.Length > 0)
+            {
+                values.Add(text.ToString());
+            }
+            return true;
+        }, IntPtr.Zero);
+        return String.Join(" | ", values.ToArray());
+    }
+
     public static string[] OverlappingButtons(IntPtr parent)
     {
         var buttons = new List<Tuple<IntPtr, string, RECT>>();
@@ -208,6 +260,102 @@ public static class QuizAppTestInterop
             }
         }
         return overlaps.ToArray();
+    }
+
+    public static string[] ControlsOverlappingListViews(IntPtr parent)
+    {
+        var lists = new List<RECT>();
+        var controls = new List<Tuple<string, string, RECT>>();
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            if (!IsWindowVisible(hwnd))
+            {
+                return true;
+            }
+
+            var className = new StringBuilder(80);
+            var text = new StringBuilder(256);
+            GetClassName(hwnd, className, className.Capacity);
+            GetWindowText(hwnd, text, text.Capacity);
+            RECT rect;
+            if (!GetWindowRect(hwnd, out rect))
+            {
+                return true;
+            }
+
+            string kind = className.ToString();
+            if (kind.Equals("SysListView32", StringComparison.OrdinalIgnoreCase))
+            {
+                lists.Add(rect);
+            }
+            else if (kind.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
+                     kind.Equals("Button", StringComparison.OrdinalIgnoreCase) ||
+                     kind.Equals("ComboBox", StringComparison.OrdinalIgnoreCase))
+            {
+                controls.Add(Tuple.Create(kind, text.ToString(), rect));
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        var overlaps = new List<string>();
+        foreach (var control in controls)
+        {
+            foreach (var list in lists)
+            {
+                RECT rect = control.Item3;
+                bool intersects = rect.Left < list.Right &&
+                                  rect.Right > list.Left &&
+                                  rect.Top < list.Bottom &&
+                                  rect.Bottom > list.Top;
+                if (intersects)
+                {
+                    overlaps.Add(control.Item1 + " '" + control.Item2 + "' overlaps ListView");
+                    break;
+                }
+            }
+        }
+        return overlaps.ToArray();
+    }
+
+    public static string[] ControlsOutsideWindow(IntPtr parent)
+    {
+        RECT parentRect;
+        if (!GetWindowRect(parent, out parentRect))
+        {
+            return new string[0];
+        }
+
+        var outside = new List<string>();
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            if (!IsWindowVisible(hwnd))
+            {
+                return true;
+            }
+
+            var className = new StringBuilder(80);
+            GetClassName(hwnd, className, className.Capacity);
+            string kind = className.ToString();
+            if (!kind.Equals("Edit", StringComparison.OrdinalIgnoreCase) &&
+                !kind.Equals("Button", StringComparison.OrdinalIgnoreCase) &&
+                !kind.Equals("ComboBox", StringComparison.OrdinalIgnoreCase) &&
+                !kind.Equals("SysListView32", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            RECT rect;
+            if (GetWindowRect(hwnd, out rect) &&
+                (rect.Left < parentRect.Left || rect.Top < parentRect.Top ||
+                 rect.Right > parentRect.Right || rect.Bottom > parentRect.Bottom))
+            {
+                var text = new StringBuilder(256);
+                GetWindowText(hwnd, text, text.Capacity);
+                outside.Add(kind + " '" + text.ToString() + "'");
+            }
+            return true;
+        }, IntPtr.Zero);
+        return outside.ToArray();
     }
 }
 '@
@@ -345,8 +493,16 @@ function Test-Screen {
     $overlaps = [QuizAppTestInterop]::OverlappingButtons(
         $script:activeProcess.MainWindowHandle
     )
+    $listOverlaps = [QuizAppTestInterop]::ControlsOverlappingListViews(
+        $script:activeProcess.MainWindowHandle
+    )
+    $outsideControls = [QuizAppTestInterop]::ControlsOutsideWindow(
+        $script:activeProcess.MainWindowHandle
+    )
     $passed = $opened -and $missingIds.Count -eq 0 -and
-              $overlaps.Count -eq 0 -and $script:activeProcess.Responding
+              $overlaps.Count -eq 0 -and $listOverlaps.Count -eq 0 -and
+              $outsideControls.Count -eq 0 -and
+              $script:activeProcess.Responding
     $details = "opened=$opened; responding=$($script:activeProcess.Responding)"
     if ($RecordRows) {
         $details += "; rows=$rows"
@@ -357,7 +513,77 @@ function Test-Screen {
     if ($overlaps.Count -gt 0) {
         $details += "; overlappingButtons=$($overlaps -join ' | ')"
     }
+    if ($listOverlaps.Count -gt 0) {
+        $details += "; controlsOverlappingLists=$($listOverlaps -join ' | ')"
+    }
+    if ($outsideControls.Count -gt 0) {
+        $details += "; controlsOutsideWindow=$($outsideControls -join ' | ')"
+    }
     Add-TestResult $Role $ExpectedTitle $passed $details
+    Invoke-AppCommand 1050 450
+}
+
+function Test-AntiCheatAltTab {
+    Invoke-AppCommand 1026
+    Set-Field 5201 "e1"
+    Set-Field 5202 "oop123"
+    Invoke-AppCommand 1041 1200
+
+    if (-not (Test-VisibleText "Làm bài:")) {
+        Add-TestResult "Học sinh" "Alt+Tab liên tiếp" $false "Không bắt đầu được đề mẫu e1."
+        Invoke-AppCommand 1050 450
+        return
+    }
+
+    $warnings = [System.Collections.Generic.List[string]]::new()
+    $focusTarget = $null
+    try {
+        $focusTarget = Start-Process cmd.exe -ArgumentList "/k", "title QuizApp Focus Target" -PassThru
+        Start-Sleep -Milliseconds 700
+
+        for ($cycle = 1; $cycle -le 2; $cycle++) {
+            [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
+            Start-Sleep -Milliseconds 350
+            [Microsoft.VisualBasic.Interaction]::AppActivate("QuizApp Focus Target") | Out-Null
+            Start-Sleep -Milliseconds 500
+            [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
+
+            $dialog = [IntPtr]::Zero
+            $dialogDeadline = (Get-Date).AddSeconds(5)
+            do {
+                $dialog = [QuizAppTestInterop]::FindTopLevelWindow(
+                    [uint32]$script:activeProcess.Id,
+                    "Cảnh báo chống gian lận"
+                )
+                if ($dialog -eq [IntPtr]::Zero) {
+                    Start-Sleep -Milliseconds 100
+                }
+            } while ($dialog -eq [IntPtr]::Zero -and (Get-Date) -lt $dialogDeadline)
+
+            if ($dialog -eq [IntPtr]::Zero) {
+                $warnings.Add("Lần ${cycle}: không hiện cảnh báo")
+                continue
+            }
+
+            $warningText = [QuizAppTestInterop]::ChildText($dialog)
+            $warnings.Add("Lần ${cycle}: $warningText")
+            [QuizAppTestInterop]::PostMessage(
+                $dialog, 0x0010, [IntPtr]0, [IntPtr]0
+            ) | Out-Null
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    finally {
+        if ($focusTarget -and -not $focusTarget.HasExited) {
+            Stop-Process -Id $focusTarget.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    $firstPassed = $warnings.Count -ge 1 -and $warnings[0].Contains("1/3")
+    $secondPassed = $warnings.Count -ge 2 -and $warnings[1].Contains("2/3")
+    Add-TestResult "Học sinh" "Alt+Tab liên tiếp" ($firstPassed -and $secondPassed) (
+        $warnings -join "; "
+    )
     Invoke-AppCommand 1050 450
 }
 
@@ -416,6 +642,10 @@ function Test-Role {
             -ExpectedControlIds $screen.Controls `
             -DelayMilliseconds $(if ($screen.Delay) { $screen.Delay } else { 700 }) `
             -RecordRows:$screen.Rows
+    }
+
+    if ($Role -eq "Học sinh") {
+        Test-AntiCheatAltTab
     }
 
     Test-ProfileValidation $Role

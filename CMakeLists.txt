@@ -87,6 +87,8 @@ target_link_libraries(QuizApp PRIVATE
     ole32
     gdiplus
     bcrypt
+    advapi32
+    imm32
     nlohmann_json::nlohmann_json
     CURL::libcurl
     ZLIB::ZLIB

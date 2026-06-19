@@ -55,6 +55,9 @@ private:
     chrono::steady_clock::time_point lastExamViolationAt{};
     chrono::steady_clock::time_point allowExamViewerFocusLossUntil{};
     bool antiCheatDialogOpen = false;
+    bool examAppActive = true;
+    bool pendingExamViolationNotice = false;
+    bool pendingExamAutoSubmit = false;
     bool examSubmissionInProgress = false;
     HWND examTimerLabel = nullptr;
     chrono::system_clock::time_point activeExamEndTime;

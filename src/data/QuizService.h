@@ -478,6 +478,9 @@ public:
         int attemptNumber = countAttempts(student->getUserId(), exam.getExamId()) + 1;
         sessionId = "session_" + safeDocumentPart(student->getUserId()) + "_" +
                     safeDocumentPart(exam.getExamId()) + "_" + to_string(attemptNumber);
+        if (shouldSkipFirebase()) {
+            return true;
+        }
 
         json existingDocument;
         if (firebase.getDocument("examSessions", sessionId, existingDocument)) {
@@ -485,14 +488,20 @@ public:
             string status = firebase.stringField(fields, "status");
             string existingDevice = firebase.stringField(fields, "deviceId");
             if (status == "IN_PROGRESS" && existingDevice != deviceId()) {
-                errorMessage = "Tài khoản đang làm bài trên thiết bị khác.";
+                errorMessage = "Tài khoản đang làm bài trên thiết bị khác.\r\n"
+                               "Mã phiên: " + sessionId +
+                               "\r\nNếu đây là phiên cũ, hãy gửi mã này cho quản trị viên để mở khóa.";
             } else if (status == "IN_PROGRESS") {
                 updateExamSession(sessionId, "INTERRUPTED",
                                   firebase.intField(fields, "violationCount", 0),
                                   "Phiên trước kết thúc bất thường");
-                errorMessage = "Phiên thi trước kết thúc bất thường và đã bị khóa. Vui lòng nhờ admin mở khóa.";
+                errorMessage = "Phiên thi trước kết thúc bất thường và đã bị khóa.\r\n"
+                               "Mã phiên: " + sessionId +
+                               "\r\nHãy gửi mã này cho quản trị viên để mở khóa rồi thử lại.";
             } else if (status == "INTERRUPTED") {
-                errorMessage = "Lượt thi trước bị gián đoạn. Vui lòng nhờ admin mở khóa.";
+                errorMessage = "Lượt thi trước bị gián đoạn.\r\n"
+                               "Mã phiên: " + sessionId +
+                               "\r\nHãy gửi mã này cho quản trị viên để mở khóa rồi thử lại.";
             } else {
                 errorMessage = "Phiên thi này đã tồn tại và không thể bắt đầu lại.";
             }
@@ -521,7 +530,7 @@ public:
 
     void updateExamSession(string sessionId, string status, int violationCount,
                            string details = "") {
-        if (sessionId.empty()) return;
+        if (sessionId.empty() || shouldSkipFirebase()) return;
         json document;
         json fields;
         if (firebase.getDocument("examSessions", sessionId, document) &&

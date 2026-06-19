@@ -156,9 +156,18 @@
             return 0;
         }
 
-        if (message == WM_ACTIVATEAPP && wParam == FALSE &&
-            currentScreen == SCREEN_TAKE_EXAM_FORM && !antiCheatDialogOpen &&
-            !examSubmissionInProgress) {
+        if (message == WM_ACTIVATEAPP && currentScreen == SCREEN_TAKE_EXAM_FORM) {
+            if (wParam == TRUE) {
+                examAppActive = true;
+                showPendingExamViolationNotice();
+                return 0;
+            }
+
+            if (antiCheatDialogOpen || examSubmissionInProgress) {
+                return 0;
+            }
+
+            examAppActive = false;
             if (chrono::steady_clock::now() <= allowExamViewerFocusLossUntil) {
                 allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
                 return 0;
@@ -169,8 +178,15 @@
 
         if (message == WM_SIZE && wParam == SIZE_MINIMIZED &&
             currentScreen == SCREEN_TAKE_EXAM_FORM && !examSubmissionInProgress) {
+            examAppActive = false;
             recordExamViolation("Thu nhỏ cửa sổ thi");
             return 0;
+        }
+
+        if (message == WM_SIZE && wParam != SIZE_MINIMIZED &&
+            currentScreen == SCREEN_TAKE_EXAM_FORM) {
+            examAppActive = true;
+            showPendingExamViolationNotice();
         }
 
         if (message == WM_TIMER && wParam == EXAM_TIMER_ID) {
@@ -572,6 +588,8 @@ private:
         else if (id == ID_AI_REFRESH_PREVIEW) refreshAiPreviewFromJson();
         else if (id == ID_AI_SAVE_ONE) saveOneAiQuestion();
         else if (id == ID_AI_SAVE_ALL) saveAllAiQuestions();
+        else if (id == ID_AI_SAVE_API_KEY) saveAiApiKeyFromUi();
+        else if (id == ID_AI_CLEAR_API_KEY) clearAiApiKeyFromUi();
         else if (id == ID_DELETE_QUESTION_SUBMIT) submitDeleteQuestion();
         else if (id == ID_CREATE_EXAM_CHOOSE_FILE) chooseExamFile();
         else if (id == ID_CREATE_EXAM_SUBMIT) submitCreateExam();
@@ -746,6 +764,9 @@ private:
         examViolationCount = 0;
         lastExamViolationAt = chrono::steady_clock::time_point{};
         allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
+        examAppActive = true;
+        pendingExamViolationNotice = false;
+        pendingExamAutoSubmit = false;
         examTimerLabel = nullptr;
         primaryButtons.clear();
         navButtons.clear();
@@ -794,6 +815,7 @@ private:
         SendMessageW(control, WM_SETFONT, (WPARAM)font, TRUE);
         if (cls == "EDIT") {
             SendMessageW(control, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(10, 10));
+            ImmAssociateContextEx(control, nullptr, IACE_DEFAULT);
         }
         controls.push_back(control);
         return control;
@@ -1328,7 +1350,7 @@ private:
         RECT client = {};
         GetClientRect(window, &client);
         w = min(w, max(700, (int)client.right - x - 18));
-        h = max(h, 360);
+        h = min(h, max(240, (int)client.bottom - y - 250));
         HWND list = CreateWindowExW(WS_EX_STATICEDGE, WC_LISTVIEWW, L"",
                                    WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
                                    x, y, w, h, window, nullptr, instance, nullptr);

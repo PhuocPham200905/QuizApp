@@ -251,28 +251,7 @@
 
     string antiCheatMonitorText() {
         stringstream text;
-        json sessions = data.getExamSessions();
-        text << "PHIÊN THI\r\n";
-        text << "Session ID | Học sinh | Đề | Trạng thái | Thiết bị | Vi phạm | Cập nhật\r\n";
-        text << "--------------------------------------------------------------------------------\r\n";
-        if (sessions.contains("documents")) {
-            for (const json& document : sessions["documents"]) {
-                string sessionId = document.value("name", "");
-                size_t slash = sessionId.find_last_of('/');
-                if (slash != string::npos) sessionId = sessionId.substr(slash + 1);
-                const json& fields = document.value("fields", json::object());
-                text << sessionId << " | "
-                     << (fields.contains("studentId") ? fields["studentId"].value("stringValue", "") : "") << " | "
-                     << (fields.contains("examId") ? fields["examId"].value("stringValue", "") : "") << " | "
-                     << (fields.contains("status") ? fields["status"].value("stringValue", "") : "") << " | "
-                     << (fields.contains("deviceId") ? fields["deviceId"].value("stringValue", "") : "") << " | "
-                     << (fields.contains("violationCount") ? fields["violationCount"].value("integerValue", "0") : "0") << " | "
-                     << (fields.contains("updatedAt") ? fields["updatedAt"].value("stringValue", "") : "")
-                     << "\r\n";
-            }
-        }
-
-        text << "\r\nNHẬT KÝ GẦN ĐÂY\r\n";
+        text << "NHẬT KÝ GẦN ĐÂY\r\n";
         text << "Thời gian | Người dùng | Đề | Hành động | Chi tiết | Thiết bị\r\n";
         text << "--------------------------------------------------------------------------------\r\n";
         json logs = data.getAuditLogs();
@@ -292,22 +271,115 @@
         return text.str();
     }
 
+    string examSessionId(const json& document) {
+        string sessionId = document.value("name", "");
+        size_t slash = sessionId.find_last_of('/');
+        return slash == string::npos ? sessionId : sessionId.substr(slash + 1);
+    }
+
+    string examSessionStringField(const json& fields, const string& name) {
+        return fields.contains(name) ? fields[name].value("stringValue", "") : "";
+    }
+
+    vector<string> interruptedExamSessionIds(const json& sessions) {
+        vector<string> ids;
+        if (!sessions.contains("documents")) {
+            return ids;
+        }
+        for (const json& document : sessions["documents"]) {
+            const json& fields = document.value("fields", json::object());
+            if (examSessionStringField(fields, "status") == "INTERRUPTED") {
+                ids.push_back(examSessionId(document));
+            }
+        }
+        return ids;
+    }
+
+    HWND interruptedExamSessionListView(const json& sessions, int x, int y, int w, int h) {
+        HWND list = CreateWindowExW(
+            WS_EX_STATICEDGE, WC_LISTVIEWW, L"",
+            WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+            x, y, w, h, window, nullptr, instance, nullptr
+        );
+        styleModernListView(list, 34);
+        controls.push_back(list);
+
+        addListColumn(list, 0, "Mã phiên", 300);
+        addListColumn(list, 1, "Học sinh", 180);
+        addListColumn(list, 2, "Đề thi", 110);
+        addListColumn(list, 3, "Vi phạm", 80, LVCFMT_CENTER);
+        addListColumn(list, 4, "Thiết bị", 150);
+        addListColumn(list, 5, "Cập nhật", 170);
+
+        int row = 0;
+        if (sessions.contains("documents")) {
+            for (const json& document : sessions["documents"]) {
+                const json& fields = document.value("fields", json::object());
+                if (examSessionStringField(fields, "status") != "INTERRUPTED") {
+                    continue;
+                }
+
+                vector<string> values = {
+                    examSessionId(document),
+                    examSessionStringField(fields, "studentId"),
+                    examSessionStringField(fields, "examId"),
+                    fields.contains("violationCount")
+                        ? fields["violationCount"].value("integerValue", "0")
+                        : "0",
+                    examSessionStringField(fields, "deviceId"),
+                    examSessionStringField(fields, "updatedAt")
+                };
+                wstring firstValue = utf8ToWide(values[0]);
+                LVITEMW item = {};
+                item.mask = LVIF_TEXT;
+                item.iItem = row;
+                item.pszText = const_cast<wchar_t*>(firstValue.c_str());
+                SendMessageW(list, LVM_INSERTITEMW, 0, (LPARAM)&item);
+                for (int col = 1; col < (int)values.size(); col++) {
+                    setListText(list, row, col, values[col]);
+                }
+                row++;
+            }
+        }
+        return list;
+    }
+
     void showAntiCheatMonitor() {
         clearControls();
         currentScreen = SCREEN_VIEW;
         title("Giám sát chống gian lận", "Theo dõi phiên thi, vi phạm và mở khóa bài bị gián đoạn.");
         addNav("Quản trị viên");
-        edit(antiCheatMonitorText(), 260, 100, 980, 500, 0, false, true, true);
-        label("Session ID cần mở khóa", 300, 630, 190, 26);
-        edit("", 500, 626, 360, 30, 6601);
-        defaultButton("Mở khóa", 875, 624, 120, 38, ID_UNLOCK_SESSION);
+        json sessions = data.getExamSessions();
+        vector<string> interruptedIds = interruptedExamSessionIds(sessions);
+        RECT client = {};
+        GetClientRect(window, &client);
+        int contentWidth = max(680, (int)client.right - 320);
+
+        surfaceLabelText("Phiên đang cần mở khóa", 280, 100, 320, 28, brandFont);
+        surfaceLabelText(
+            interruptedIds.empty()
+                ? "Không có phiên bị gián đoạn."
+                : "Xem thông tin trong bảng và chọn mã phiên ở hộp bên dưới.",
+            280, 132, 600, 24, smallFont, THEME_MUTED
+        );
+        button("Làm mới", 280 + contentWidth - 110, 110, 110, 34, ID_ADMIN_AUDIT);
+        interruptedExamSessionListView(sessions, 280, 160, contentWidth, 165);
+
+        surfaceLabelText("Nhật ký hoạt động gần đây", 280, 345, 360, 28, brandFont);
+        edit(antiCheatMonitorText(), 280, 380, contentWidth, 145, 0, false, true, true);
+
+        label("Phiên cần mở khóa", 300, 550, 170, 26);
+        int selectorWidth = min(390, max(260, contentWidth - 380));
+        comboBox(interruptedIds, 475, 546, selectorWidth, 180, 6601);
+        defaultButton("Mở khóa phiên", 490 + selectorWidth, 544, 145, 38, ID_UNLOCK_SESSION);
         button("Về dashboard", 24, 535, 190, 40, ID_DASHBOARD);
     }
 
     void unlockExamSession() {
         string sessionId = getText(6601);
         if (sessionId.empty()) {
-            error("Vui lòng nhập Session ID cần mở khóa.");
+            error("Không có phiên được chọn.\r\n"
+                  "Hãy chọn một phiên bị gián đoạn trong danh sách rồi thử lại.");
             return;
         }
         if (!data.unlockExamSession(sessionId)) {
