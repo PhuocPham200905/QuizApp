@@ -572,6 +572,6 @@
             message("Đã xóa câu hỏi.");
             showTeacherDashboard();
         } else {
-            error("Không tìm thấy câu hỏi.");
+            error(data.getFirebaseStatus());
         }
     }

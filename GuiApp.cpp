@@ -49,10 +49,15 @@ private:
     vector<array<char, 4>> activeAnswerValues;
     vector<HWND> answerCombos;
     vector<string> activeQuestionIds;
+    map<string, char> activeExamDraftAnswers;
+    vector<vector<int>> activeExamQuestionPages;
+    vector<string> activeExamQuestionOrder;
+    map<string, array<string, 4>> activeExamDisplayedOptions;
+    map<string, array<char, 4>> activeExamDisplayedValues;
+    int activeExamQuestionPage = 0;
     string activeExamId;
     string activeSessionId;
     int examViolationCount = 0;
-    chrono::steady_clock::time_point lastExamViolationAt{};
     chrono::steady_clock::time_point allowExamViewerFocusLossUntil{};
     bool antiCheatDialogOpen = false;
     bool examAppActive = true;

@@ -158,8 +158,11 @@
 
         if (message == WM_ACTIVATEAPP && currentScreen == SCREEN_TAKE_EXAM_FORM) {
             if (wParam == TRUE) {
+                bool wasInactive = !examAppActive;
                 examAppActive = true;
-                showPendingExamViolationNotice();
+                if (wasInactive) {
+                    showPendingExamViolationNotice();
+                }
                 return 0;
             }
 
@@ -167,6 +170,9 @@
                 return 0;
             }
 
+            if (!examAppActive) {
+                return 0;
+            }
             examAppActive = false;
             if (chrono::steady_clock::now() <= allowExamViewerFocusLossUntil) {
                 allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
@@ -178,15 +184,12 @@
 
         if (message == WM_SIZE && wParam == SIZE_MINIMIZED &&
             currentScreen == SCREEN_TAKE_EXAM_FORM && !examSubmissionInProgress) {
+            if (!examAppActive) {
+                return 0;
+            }
             examAppActive = false;
             recordExamViolation("Thu nhỏ cửa sổ thi");
             return 0;
-        }
-
-        if (message == WM_SIZE && wParam != SIZE_MINIMIZED &&
-            currentScreen == SCREEN_TAKE_EXAM_FORM) {
-            examAppActive = true;
-            showPendingExamViolationNotice();
         }
 
         if (message == WM_TIMER && wParam == EXAM_TIMER_ID) {
@@ -603,6 +606,8 @@ private:
         else if (id == ID_RESULTS_FILTER) showAllResults(getText(6501), getText(6502));
         else if (id == ID_UNLOCK_SESSION) unlockExamSession();
         else if (id == ID_TAKE_EXAM_OPEN_FILE) openActiveExamAttachment();
+        else if (id == ID_EXAM_PREVIOUS_PAGE) changeExamQuestionPage(-1);
+        else if (id == ID_EXAM_NEXT_PAGE) changeExamQuestionPage(1);
         else if (id == ID_TAKE_EXAM_SUBMIT) submitTakeExam();
         else if (id == ID_STUDENT_DELETE) submitDeleteManagedUser("student");
         else if (id == ID_STUDENT_CHANGE_CLASS) submitChangeManagedUserClass("student");
@@ -634,11 +639,14 @@ private:
             return false;
         }
 
-        for (array<HWND, 4>& row : answerOptions) {
+        for (int rowIndex = 0; rowIndex < (int)answerOptions.size(); rowIndex++) {
+            array<HWND, 4>& row = answerOptions[rowIndex];
             bool foundInRow = false;
-            for (HWND button : row) {
-                if (button == selectedButton) {
+            int selectedIndex = -1;
+            for (int optionIndex = 0; optionIndex < 4; optionIndex++) {
+                if (row[optionIndex] == selectedButton) {
                     foundInRow = true;
+                    selectedIndex = optionIndex;
                     break;
                 }
             }
@@ -653,6 +661,12 @@ private:
                 SendMessageW(button, BM_SETCHECK, selected ? BST_CHECKED : BST_UNCHECKED, 0);
             }
             refreshAnswerChoiceButtons();
+            if (rowIndex < (int)activeQuestionIds.size() && selectedIndex >= 0) {
+                activeExamDraftAnswers[activeQuestionIds[rowIndex]] =
+                    rowIndex < (int)activeAnswerValues.size()
+                        ? activeAnswerValues[rowIndex][selectedIndex]
+                        : (char)('A' + selectedIndex);
+            }
             SetFocus(selectedButton);
             return true;
         }
@@ -759,10 +773,15 @@ private:
         activeAnswerValues.clear();
         answerCombos.clear();
         activeQuestionIds.clear();
+        activeExamDraftAnswers.clear();
+        activeExamQuestionPages.clear();
+        activeExamQuestionOrder.clear();
+        activeExamDisplayedOptions.clear();
+        activeExamDisplayedValues.clear();
+        activeExamQuestionPage = 0;
         activeExamId.clear();
         activeSessionId.clear();
         examViolationCount = 0;
-        lastExamViolationAt = chrono::steady_clock::time_point{};
         allowExamViewerFocusLossUntil = chrono::steady_clock::time_point{};
         examAppActive = true;
         pendingExamViolationNotice = false;
@@ -962,7 +981,7 @@ private:
         return control;
     }
 
-    HWND imageBox(string path, int x, int y, int maxW, int maxH) {
+    HWND imageBox(string path, int x, int y, int maxW, int maxH, bool allowUpscale = false) {
         if (path.empty()) {
             return nullptr;
         }
@@ -976,7 +995,7 @@ private:
         int originalW = (int)image.GetWidth();
         int originalH = (int)image.GetHeight();
         double scale = min((double)maxW / originalW, (double)maxH / originalH);
-        if (scale > 1.0) {
+        if (!allowUpscale && scale > 1.0) {
             scale = 1.0;
         }
 

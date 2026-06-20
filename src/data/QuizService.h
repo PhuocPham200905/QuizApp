@@ -107,6 +107,77 @@ public:
         return nullptr;
     }
 
+    bool validateQuestionIds(const vector<string>& requestedIds,
+                             vector<string>& validIds,
+                             string& errorMessage) {
+        validIds.clear();
+        errorMessage.clear();
+        vector<string> missingIds;
+        vector<string> duplicateIds;
+
+        for (const string& questionId : requestedIds) {
+            if (find(validIds.begin(), validIds.end(), questionId) != validIds.end()) {
+                if (find(duplicateIds.begin(), duplicateIds.end(), questionId) ==
+                    duplicateIds.end()) {
+                    duplicateIds.push_back(questionId);
+                }
+                continue;
+            }
+            if (findQuestionById(questionId) == nullptr) {
+                if (find(missingIds.begin(), missingIds.end(), questionId) ==
+                    missingIds.end()) {
+                    missingIds.push_back(questionId);
+                }
+                continue;
+            }
+            validIds.push_back(questionId);
+        }
+
+        auto appendIds = [](stringstream& text, const vector<string>& ids) {
+            for (int index = 0; index < (int)ids.size(); index++) {
+                if (index > 0) text << ", ";
+                text << ids[index];
+            }
+        };
+
+        stringstream details;
+        if (!missingIds.empty()) {
+            details << "Mã câu hỏi không tồn tại: ";
+            appendIds(details, missingIds);
+            details << ".";
+        }
+        if (!duplicateIds.empty()) {
+            if (details.tellp() > 0) details << "\r\n";
+            details << "Mã câu hỏi bị lặp: ";
+            appendIds(details, duplicateIds);
+            details << ".";
+        }
+
+        errorMessage = details.str();
+        return missingIds.empty() && duplicateIds.empty();
+    }
+
+    bool resolveExamQuestions(const Exam& exam,
+                              vector<Question*>& resolvedQuestions,
+                              string& errorMessage) {
+        resolvedQuestions.clear();
+        vector<string> validIds;
+        if (!validateQuestionIds(exam.getQuestionIds(), validIds, errorMessage)) {
+            return false;
+        }
+        if (validIds.empty()) {
+            errorMessage = "Đề thi không còn câu hỏi hợp lệ.";
+            return false;
+        }
+        for (const string& questionId : validIds) {
+            Question* question = findQuestionById(questionId);
+            if (question != nullptr) {
+                resolvedQuestions.push_back(question);
+            }
+        }
+        return resolvedQuestions.size() == validIds.size();
+    }
+
     Exam* findExamById(string examId) {
         for (Exam& exam : exams) {
             if (exam.getExamId() == examId) {
@@ -384,28 +455,54 @@ public:
     }
 
     bool deleteQuestion(string questionId) {
+        if (findQuestionById(questionId) == nullptr) {
+            firebaseStatus = "Không tìm thấy câu hỏi.";
+            return false;
+        }
+        for (const Exam& exam : exams) {
+            const vector<string>& examQuestionIds = exam.getQuestionIds();
+            if (find(examQuestionIds.begin(), examQuestionIds.end(), questionId) !=
+                examQuestionIds.end()) {
+                firebaseStatus =
+                    "Không thể xóa câu hỏi " + questionId +
+                    " vì đang được dùng trong đề " + exam.getExamId() +
+                    " - " + exam.getTitle() + ".";
+                return false;
+            }
+        }
+        if (!shouldSkipFirebase() &&
+            !firebase.deleteDocument("questions", questionId)) {
+            firebaseStatus = "Không thể xóa câu hỏi khỏi Firestore.";
+            return false;
+        }
+
         int oldSize = (int)questions.size();
         questions.erase(remove_if(questions.begin(), questions.end(),
                                   [questionId](Question question) {
                                       return question.getQuestionId() == questionId;
                                   }),
                         questions.end());
+        firebaseStatus = "Đã xóa câu hỏi.";
         return (int)questions.size() < oldSize;
     }
 
-    void addExam(string title, int duration, vector<string> questionIds, vector<char> answerKey,
+    bool addExam(string title, int duration, vector<string> questionIds, vector<char> answerKey,
                  string createdBy, string startAt, string closeAt, string examPassword,
                  string attachmentSourcePath, string attachmentUrl, int attemptLimit,
                  int violationLimit, bool shuffleQuestions, bool shuffleAnswers) {
         string examId = createExamId();
         string attachmentPath = prepareExamAttachment(examId, attachmentSourcePath);
+        if (!saveExamToFirebase(examId, title, duration, questionIds, createdBy, startAt, closeAt,
+                                examPassword, attachmentPath, attachmentUrl, answerKey,
+                                attemptLimit, violationLimit, shuffleQuestions,
+                                shuffleAnswers, true)) {
+            return false;
+        }
         exams.push_back(Exam(examId, title, duration, questionIds,
                              createdBy, startAt, closeAt, examPassword,
                              attachmentPath, attachmentUrl, answerKey, attemptLimit,
                              violationLimit, shuffleQuestions, shuffleAnswers, true));
-        saveExamToFirebase(examId, title, duration, questionIds, createdBy, startAt, closeAt,
-                           examPassword, attachmentPath, attachmentUrl, answerKey, attemptLimit,
-                           violationLimit, shuffleQuestions, shuffleAnswers, true);
+        return true;
     }
 
     bool updateExamAttemptLimit(string examId, int attemptLimit) {
@@ -419,13 +516,37 @@ public:
             return false;
         }
 
+        if (!saveExamToFirebase(exam->getExamId(), exam->getTitle(), exam->getDurationMinutes(),
+                                exam->getQuestionIds(), exam->getCreatedBy(), exam->getStartAt(),
+                                exam->getCloseAt(), exam->getExamPassword(),
+                                exam->getAttachmentPath(), exam->getAttachmentUrl(),
+                                exam->getAnswerKey(), attemptLimit, exam->getViolationLimit(),
+                                exam->shouldShuffleQuestions(), exam->shouldShuffleAnswers(),
+                                exam->isOpen())) {
+            return false;
+        }
         exam->setAttemptLimit(attemptLimit);
-        saveExamToFirebase(exam->getExamId(), exam->getTitle(), exam->getDurationMinutes(),
-                           exam->getQuestionIds(), exam->getCreatedBy(), exam->getStartAt(),
-                           exam->getCloseAt(), exam->getExamPassword(), exam->getAttachmentPath(),
-                           exam->getAttachmentUrl(), exam->getAnswerKey(), exam->getAttemptLimit(),
-                           exam->getViolationLimit(), exam->shouldShuffleQuestions(),
-                           exam->shouldShuffleAnswers(), exam->isOpen());
+        return true;
+    }
+
+    bool updateExamOpenState(string examId, bool open) {
+        Exam* exam = findExamById(examId);
+        if (exam == nullptr) {
+            firebaseStatus = "Không tìm thấy đề thi.";
+            return false;
+        }
+
+        if (!saveExamToFirebase(exam->getExamId(), exam->getTitle(),
+                                exam->getDurationMinutes(), exam->getQuestionIds(),
+                                exam->getCreatedBy(), exam->getStartAt(), exam->getCloseAt(),
+                                exam->getExamPassword(), exam->getAttachmentPath(),
+                                exam->getAttachmentUrl(), exam->getAnswerKey(),
+                                exam->getAttemptLimit(), exam->getViolationLimit(),
+                                exam->shouldShuffleQuestions(), exam->shouldShuffleAnswers(),
+                                open)) {
+            return false;
+        }
+        exam->setOpen(open);
         return true;
     }
 
@@ -577,6 +698,14 @@ public:
             return false;
         }
 
+        if (!saveExamToFirebase(exam->getExamId(), title, duration, questionIds,
+                                exam->getCreatedBy(), startAt, closeAt, examPassword,
+                                exam->getAttachmentPath(), attachmentUrl, answerKey,
+                                attemptLimit, violationLimit, shuffleQuestions,
+                                shuffleAnswers, exam->isOpen())) {
+            return false;
+        }
+
         exam->setTitle(title);
         exam->setDurationMinutes(duration);
         exam->setStartAt(startAt);
@@ -589,12 +718,6 @@ public:
         exam->setAnswerKey(answerKey);
         exam->setShuffleQuestions(shuffleQuestions);
         exam->setShuffleAnswers(shuffleAnswers);
-        saveExamToFirebase(exam->getExamId(), exam->getTitle(), exam->getDurationMinutes(),
-                           exam->getQuestionIds(), exam->getCreatedBy(), exam->getStartAt(),
-                           exam->getCloseAt(), exam->getExamPassword(), exam->getAttachmentPath(),
-                           exam->getAttachmentUrl(), exam->getAnswerKey(), exam->getAttemptLimit(),
-                           exam->getViolationLimit(), exam->shouldShuffleQuestions(),
-                           exam->shouldShuffleAnswers(), exam->isOpen());
         return true;
     }
 
@@ -811,8 +934,16 @@ public:
             if (!loadedResults.empty()) results = loadedResults;
 
             resetUserCounters();
-            nextQuestionNumber = (int)questions.size() + 1;
-            nextExamNumber = (int)exams.size() + 1;
+            nextQuestionNumber = 1;
+            for (const Question& question : questions) {
+                nextQuestionNumber = max(nextQuestionNumber,
+                                         numberAfterPrefix(question.getQuestionId(), 'q') + 1);
+            }
+            nextExamNumber = 1;
+            for (const Exam& exam : exams) {
+                nextExamNumber = max(nextExamNumber,
+                                     numberAfterPrefix(exam.getExamId(), 'e') + 1);
+            }
 
             connectedToFirebase = true;
             firebaseStatus = "Dữ liệu đã sẵn sàng.";
@@ -960,11 +1091,15 @@ public:
         firebase.setDocument("questions", questionId, fields);
     }
 
-    void saveExamToFirebase(string examId, string title, int duration, vector<string> questionIds,
+    bool saveExamToFirebase(string examId, string title, int duration, vector<string> questionIds,
                             string createdBy, string startAt, string closeAt, string examPassword,
                             string attachmentPath, string attachmentUrl, vector<char> answerKey,
                             int attemptLimit, int violationLimit, bool shuffleQuestions,
                             bool shuffleAnswers, bool isOpen) {
+        if (shouldSkipFirebase()) {
+            return true;
+        }
+
         json fields;
         fields["title"] = firebase.stringValue(title);
         fields["durationMinutes"] = firebase.intValue(duration);
@@ -981,7 +1116,16 @@ public:
         fields["shuffleQuestions"] = firebase.boolValue(shuffleQuestions);
         fields["shuffleAnswers"] = firebase.boolValue(shuffleAnswers);
         fields["isOpen"] = firebase.boolValue(isOpen);
-        firebase.setDocument("exams", examId, fields);
+        if (!firebase.setDocument("exams", examId, fields)) {
+            connectedToFirebase = false;
+            firebaseStatus = "Không thể lưu đề thi lên Firestore.\r\n" +
+                             firebase.getLastError();
+            return false;
+        }
+
+        connectedToFirebase = true;
+        firebaseStatus = "Đã lưu đề thi.";
+        return true;
     }
 
     bool saveAnswerSheetToFirebase(string sheetId, string studentId, string examId,
@@ -1033,8 +1177,21 @@ public:
     string createAdminId() { return createUserId('a', nextAdminNumber); }
     string createTeacherId() { return createUserId('t', nextTeacherNumber); }
     string createStudentId() { return createUserId('s', nextStudentNumber); }
-    string createQuestionId() { return "q" + to_string(nextQuestionNumber++); }
-    string createExamId() { return "e" + to_string(nextExamNumber++); }
+    string createQuestionId() {
+        string questionId;
+        do {
+            questionId = "q" + to_string(nextQuestionNumber++);
+        } while (findQuestionById(questionId) != nullptr);
+        return questionId;
+    }
+
+    string createExamId() {
+        string examId;
+        do {
+            examId = "e" + to_string(nextExamNumber++);
+        } while (findExamById(examId) != nullptr);
+        return examId;
+    }
     string createSheetId() { return "s" + to_string(nextSheetNumber++); }
     string createResultId() { return "r" + to_string(nextResultNumber++); }
 

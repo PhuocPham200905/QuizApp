@@ -127,8 +127,11 @@
 
         vector<string> ids = parseQuestionIds(idsText);
         vector<string> validIds;
-        for (string id : ids) {
-            if (data.findQuestionById(id) != nullptr) validIds.push_back(id);
+        string questionIdError;
+        if (!ids.empty() &&
+            !data.validateQuestionIds(ids, validIds, questionIdError)) {
+            error("Không thể tạo đề thi.\r\n" + questionIdError);
+            return;
         }
 
         vector<char> answerKey;
@@ -156,9 +159,12 @@
         }
 
         bool localFileOnly = !attachmentPath.empty() && attachmentUrl.empty();
-        data.addExam(title, duration, validIds, answerKey, currentUser->getUserId(), startAt, closeAt,
-                     examPassword, attachmentPath, attachmentUrl, attemptLimit,
-                     violationLimit, shuffleQuestions, shuffleAnswers);
+        if (!data.addExam(title, duration, validIds, answerKey, currentUser->getUserId(),
+                          startAt, closeAt, examPassword, attachmentPath, attachmentUrl,
+                          attemptLimit, violationLimit, shuffleQuestions, shuffleAnswers)) {
+            error(data.getFirebaseStatus());
+            return;
+        }
         if (localFileOnly) {
             message("Đã tạo đề thi.\r\n\r\n"
                     "Lưu ý: file hiện chỉ mở được trên máy giáo viên. "
@@ -174,7 +180,7 @@
         clearControls();
         currentScreen = SCREEN_TOGGLE_EXAM;
         title("Mở/đóng đề thi");
-        examListView(250, 90, 680, 330, false);
+        examListView(250, 90, 1000, 330, false);
         label("Mã đề thi", 300, 455, 140, 26);
         edit("", 460, 451, 150, 30, 5101);
         defaultButton("Đổi trạng thái", 460, 505, 140, 38, ID_TOGGLE_EXAM_SUBMIT);
@@ -192,7 +198,11 @@
             error("Không tìm thấy đề thi.");
             return;
         }
-        exam->setOpen(!exam->isOpen());
+        bool newOpenState = !exam->isOpen();
+        if (!data.updateExamOpenState(examId, newOpenState)) {
+            error("Không thể lưu trạng thái đề thi.\r\n" + data.getFirebaseStatus());
+            return;
+        }
         message("Đã đổi trạng thái đề thi.");
         if (currentUser->getRole() == "teacher") showTeacherDashboard();
         else showAdminDashboard();
@@ -327,19 +337,16 @@
 
         vector<string> requestedIds = parseQuestionIds(questionIdsText);
         vector<string> validIds;
-        for (const string& questionId : requestedIds) {
-            if (data.findQuestionById(questionId) != nullptr) {
-                validIds.push_back(questionId);
-            }
+        string questionIdError;
+        if (!requestedIds.empty() &&
+            !data.validateQuestionIds(requestedIds, validIds, questionIdError)) {
+            error("Không thể cập nhật đề thi.\r\n" + questionIdError);
+            return;
         }
         vector<char> answerKey;
         string answerKeyError;
         if (!answerKeyText.empty() && !parseAnswerKey(answerKeyText, answerKey, answerKeyError)) {
             error(answerKeyError);
-            return;
-        }
-        if (!requestedIds.empty() && validIds.size() != requestedIds.size()) {
-            error("Danh sách mã câu hỏi có mã không tồn tại.");
             return;
         }
         if (!validIds.empty() && !answerKey.empty()) {
@@ -391,7 +398,7 @@
         clearControls();
         currentScreen = SCREEN_TAKE_EXAM_SELECT;
         title("Làm bài thi");
-        examListView(250, 88, 680, 330, true);
+        examListView(250, 88, 1000, 330, true);
         label("Mã đề thi", 300, 455, 140, 26);
         edit("", 460, 451, 150, 30, 5201);
         label("Mật khẩu de", 300, 500, 140, 26);
@@ -402,6 +409,17 @@
     }
 
     void showTakeExamForm(Exam& exam) {
+        vector<Question*> validatedExamQuestions;
+        string questionValidationError;
+        if (!exam.isFileAnswerExam() &&
+            !data.resolveExamQuestions(exam, validatedExamQuestions,
+                                       questionValidationError)) {
+            error("Không thể mở đề thi vì dữ liệu câu hỏi không toàn vẹn.\r\n" +
+                  questionValidationError +
+                  "\r\nVui lòng báo giáo viên kiểm tra lại đề.");
+            return;
+        }
+
         clearControls();
         currentScreen = SCREEN_TAKE_EXAM_FORM;
         activeExamId = exam.getExamId();
@@ -499,13 +517,7 @@
             return;
         }
 
-        vector<Question*> examQuestions;
-        for (const string& questionId : exam.getQuestionIds()) {
-            Question* question = data.findQuestionById(questionId);
-            if (question != nullptr) {
-                examQuestions.push_back(question);
-            }
-        }
+        vector<Question*> examQuestions = validatedExamQuestions;
         random_device randomDevice;
         mt19937 randomEngine(randomDevice());
         if (exam.shouldShuffleQuestions()) {
@@ -527,6 +539,51 @@
             }
             displayedOptions.push_back(options);
             displayedAnswerValues.push_back(values);
+        }
+
+        bool hasImageQuestion = any_of(
+            examQuestions.begin(), examQuestions.end(),
+            [](Question* question) {
+                return question != nullptr && question->hasImage() &&
+                       !question->getImagePath().empty();
+            }
+        );
+        if (hasImageQuestion && examQuestions.size() <= 5) {
+            activeExamQuestionOrder.clear();
+            activeExamDisplayedOptions.clear();
+            activeExamDisplayedValues.clear();
+            activeExamQuestionPages.clear();
+            activeExamQuestionPage = 0;
+
+            vector<int> theoryPage;
+            for (int questionIndex = 0; questionIndex < (int)examQuestions.size(); questionIndex++) {
+                Question* question = examQuestions[questionIndex];
+                activeExamQuestionOrder.push_back(question->getQuestionId());
+                activeExamDisplayedOptions[question->getQuestionId()] =
+                    displayedOptions[questionIndex];
+                activeExamDisplayedValues[question->getQuestionId()] =
+                    displayedAnswerValues[questionIndex];
+
+                bool hasImage = question->hasImage() && !question->getImagePath().empty();
+                if (hasImage) {
+                    if (!theoryPage.empty()) {
+                        activeExamQuestionPages.push_back(theoryPage);
+                        theoryPage.clear();
+                    }
+                    activeExamQuestionPages.push_back({questionIndex});
+                } else {
+                    theoryPage.push_back(questionIndex);
+                    if (theoryPage.size() == 3) {
+                        activeExamQuestionPages.push_back(theoryPage);
+                        theoryPage.clear();
+                    }
+                }
+            }
+            if (!theoryPage.empty()) {
+                activeExamQuestionPages.push_back(theoryPage);
+            }
+            renderPagedExamQuestions(exam);
+            return;
         }
 
         if (examQuestions.size() > 5) {
@@ -629,47 +686,79 @@
         int secondColumnLeft = optionLeft + optionWidth + columnGap;
         int actionY = min(560, max(520, layoutHeight - 80));
         int availableQuestionHeight = max(360, actionY - y - 16);
+        int imageQuestionCount = 0;
+        for (Question* question : examQuestions) {
+            if (question != nullptr && question->hasImage() &&
+                !question->getImagePath().empty()) {
+                imageQuestionCount++;
+            }
+        }
+        int imageBlockExtra = 55;
         int questionBlockHeight = examQuestions.empty()
                                       ? 96
-                                      : min(104, max(84, availableQuestionHeight /
-                                                            (int)examQuestions.size()));
+                                      : min(104, max(76,
+                                            (availableQuestionHeight -
+                                             imageQuestionCount * imageBlockExtra) /
+                                                (int)examQuestions.size()));
         int optionRowGap = 5;
         int questionToOptionsGap = 26;
-        int optionHeight = min(32, max(25, (questionBlockHeight -
+        int optionHeight = min(32, max(23, (questionBlockHeight -
                                             questionToOptionsGap - optionRowGap - 4) / 2));
 
         for (int questionIndex = 0; questionIndex < (int)examQuestions.size(); questionIndex++) {
             Question* question = examQuestions[questionIndex];
-            if (question == nullptr || y + questionBlockHeight > actionY) continue;
+            bool hasQuestionImage = question != nullptr && question->hasImage() &&
+                                    !question->getImagePath().empty();
+            int currentBlockHeight = questionBlockHeight +
+                                     (hasQuestionImage ? imageBlockExtra : 0);
+            if (question == nullptr || y + currentBlockHeight > actionY) continue;
 
             string line = to_string(index) + ". " + question->getContent();
             HWND questionLabel = label(line, contentLeft, y, contentWidth, 26);
             SendMessageW(questionLabel, WM_SETFONT, (WPARAM)brandFont, TRUE);
             int optionY = y + questionToOptionsGap;
-            if (question->hasImage() && !question->getImagePath().empty()) {
-                int imageHeight = max(60, questionBlockHeight - 74);
-                HWND image = imageBox(question->getImagePath(), optionLeft, optionY, 260, imageHeight);
+            int currentOptionLeft = optionLeft;
+            int currentSecondColumnLeft = secondColumnLeft;
+            int currentOptionWidth = optionWidth;
+            if (hasQuestionImage) {
+                int imageWidth = min(220, max(170, contentWidth / 5));
+                int imageHeight = max(90, min(130,
+                    currentBlockHeight - questionToOptionsGap - 8));
+                HWND image = imageBox(question->getImagePath(), optionLeft, optionY,
+                                      imageWidth, imageHeight, true);
                 if (image != nullptr) {
-                    optionY += imageHeight + 8;
+                    int imageGap = 16;
+                    currentOptionLeft = optionLeft + imageWidth + imageGap;
+                    currentOptionWidth = max(
+                        220,
+                        min(optionWidth,
+                            (contentRight - currentOptionLeft - columnGap) / 2)
+                    );
+                    currentSecondColumnLeft =
+                        currentOptionLeft + currentOptionWidth + columnGap;
                 }
             }
             array<string, 4> options = displayedOptions[questionIndex];
             array<HWND, 4> buttons = {
-                answerChoiceButton("A. " + options[0], optionLeft, optionY, optionWidth, optionHeight,
+                answerChoiceButton("A. " + options[0], currentOptionLeft, optionY,
+                                   currentOptionWidth, optionHeight,
                                    5300 + index * 10 + 0, true),
-                answerChoiceButton("B. " + options[1], secondColumnLeft, optionY, optionWidth, optionHeight,
+                answerChoiceButton("B. " + options[1], currentSecondColumnLeft, optionY,
+                                   currentOptionWidth, optionHeight,
                                    5300 + index * 10 + 1, false),
-                answerChoiceButton("C. " + options[2], optionLeft,
-                                   optionY + optionHeight + optionRowGap, optionWidth, optionHeight,
+                answerChoiceButton("C. " + options[2], currentOptionLeft,
+                                   optionY + optionHeight + optionRowGap,
+                                   currentOptionWidth, optionHeight,
                                    5300 + index * 10 + 2, false),
-                answerChoiceButton("D. " + options[3], secondColumnLeft,
-                                   optionY + optionHeight + optionRowGap, optionWidth, optionHeight,
+                answerChoiceButton("D. " + options[3], currentSecondColumnLeft,
+                                   optionY + optionHeight + optionRowGap,
+                                   currentOptionWidth, optionHeight,
                                    5300 + index * 10 + 3, false),
             };
             answerOptions.push_back(buttons);
             activeAnswerValues.push_back(displayedAnswerValues[questionIndex]);
             activeQuestionIds.push_back(question->getQuestionId());
-            y += questionBlockHeight;
+            y += currentBlockHeight;
             index++;
         }
 
@@ -682,6 +771,181 @@
         if (!answerOptions.empty()) {
             SetFocus(answerOptions[0][0]);
         }
+    }
+
+    void clearExamPageVisuals() {
+        answerOptions.clear();
+        activeAnswerValues.clear();
+        answerCombos.clear();
+        activeQuestionIds.clear();
+        examTimerLabel = nullptr;
+        primaryButtons.clear();
+        navButtons.clear();
+        answerChoiceButtons.clear();
+        controlTextColors.clear();
+        surfaceLabels.clear();
+        sidebarLabels.clear();
+        for (IPreviewHandler* handler : previewHandlers) {
+            if (handler != nullptr) {
+                handler->Unload();
+                handler->Release();
+            }
+        }
+        previewHandlers.clear();
+        previewHandlerByHost.clear();
+        for (HWND control : controls) {
+            DestroyWindow(control);
+        }
+        controls.clear();
+        for (HBITMAP bitmap : imageBitmaps) {
+            DeleteObject(bitmap);
+        }
+        imageBitmaps.clear();
+        for (HIMAGELIST imageList : listImageLists) {
+            ImageList_Destroy(imageList);
+        }
+        listImageLists.clear();
+    }
+
+    void restorePagedAnswerSelection(const string& questionId,
+                                     const array<HWND, 4>& buttons,
+                                     const array<char, 4>& values) {
+        auto saved = activeExamDraftAnswers.find(questionId);
+        if (saved == activeExamDraftAnswers.end()) {
+            return;
+        }
+        for (int optionIndex = 0; optionIndex < 4; optionIndex++) {
+            bool selected = values[optionIndex] == saved->second;
+            answerChoiceButtons[buttons[optionIndex]] = selected;
+            SendMessageW(buttons[optionIndex], BM_SETCHECK,
+                         selected ? BST_CHECKED : BST_UNCHECKED, 0);
+        }
+    }
+
+    void renderPagedExamQuestions(Exam& exam) {
+        clearExamPageVisuals();
+        currentScreen = SCREEN_TAKE_EXAM_FORM;
+        activeExamId = exam.getExamId();
+        title("Làm bài: " + exam.getTitle(),
+              "Thời gian làm bài: " + to_string(exam.getDurationMinutes()) +
+              " phút | Đóng lúc: " + exam.getCloseAt());
+        examTimerLabel = label("", 735, 62, 190, 24);
+        updateExamTimer();
+
+        if (activeExamQuestionPages.empty()) {
+            error("Không có câu hỏi để hiển thị.");
+            return;
+        }
+        activeExamQuestionPage = max(
+            0, min(activeExamQuestionPage, (int)activeExamQuestionPages.size() - 1)
+        );
+        const vector<int>& page = activeExamQuestionPages[activeExamQuestionPage];
+        bool imagePage = page.size() == 1;
+        Question* firstQuestion = nullptr;
+        if (imagePage && page[0] < (int)activeExamQuestionOrder.size()) {
+            firstQuestion = data.findQuestionById(activeExamQuestionOrder[page[0]]);
+            imagePage = firstQuestion != nullptr && firstQuestion->hasImage() &&
+                        !firstQuestion->getImagePath().empty();
+        }
+
+        if (imagePage) {
+            int questionIndex = page[0];
+            string questionId = activeExamQuestionOrder[questionIndex];
+            Question* question = data.findQuestionById(questionId);
+            HWND questionLabel = label(
+                to_string(questionIndex + 1) + ". " + question->getContent(),
+                270, 102, 930, 30
+            );
+            SendMessageW(questionLabel, WM_SETFONT, (WPARAM)brandFont, TRUE);
+
+            imageBox(question->getImagePath(), 285, 145, 470, 350, true);
+            array<string, 4> options = activeExamDisplayedOptions[questionId];
+            array<char, 4> values = activeExamDisplayedValues[questionId];
+            int optionX = 785;
+            int optionY = 155;
+            int optionW = 410;
+            int optionH = 52;
+            int optionGap = 14;
+            array<HWND, 4> buttons = {
+                answerChoiceButton("A. " + options[0], optionX, optionY,
+                                   optionW, optionH, 5300 + questionIndex * 10, true),
+                answerChoiceButton("B. " + options[1], optionX,
+                                   optionY + (optionH + optionGap), optionW, optionH,
+                                   5300 + questionIndex * 10 + 1, false),
+                answerChoiceButton("C. " + options[2], optionX,
+                                   optionY + (optionH + optionGap) * 2, optionW, optionH,
+                                   5300 + questionIndex * 10 + 2, false),
+                answerChoiceButton("D. " + options[3], optionX,
+                                   optionY + (optionH + optionGap) * 3, optionW, optionH,
+                                   5300 + questionIndex * 10 + 3, false),
+            };
+            answerOptions.push_back(buttons);
+            activeAnswerValues.push_back(values);
+            activeQuestionIds.push_back(questionId);
+            restorePagedAnswerSelection(questionId, buttons, values);
+        } else {
+            int y = 110;
+            for (int questionIndex : page) {
+                if (questionIndex >= (int)activeExamQuestionOrder.size()) {
+                    continue;
+                }
+                string questionId = activeExamQuestionOrder[questionIndex];
+                Question* question = data.findQuestionById(questionId);
+                if (question == nullptr) {
+                    continue;
+                }
+                HWND questionLabel = label(
+                    to_string(questionIndex + 1) + ". " + question->getContent(),
+                    270, y, 930, 28
+                );
+                SendMessageW(questionLabel, WM_SETFONT, (WPARAM)brandFont, TRUE);
+                array<string, 4> options = activeExamDisplayedOptions[questionId];
+                array<char, 4> values = activeExamDisplayedValues[questionId];
+                array<HWND, 4> buttons = {
+                    answerChoiceButton("A. " + options[0], 300, y + 34, 410, 34,
+                                       5300 + questionIndex * 10, true),
+                    answerChoiceButton("B. " + options[1], 730, y + 34, 410, 34,
+                                       5300 + questionIndex * 10 + 1, false),
+                    answerChoiceButton("C. " + options[2], 300, y + 76, 410, 34,
+                                       5300 + questionIndex * 10 + 2, false),
+                    answerChoiceButton("D. " + options[3], 730, y + 76, 410, 34,
+                                       5300 + questionIndex * 10 + 3, false),
+                };
+                answerOptions.push_back(buttons);
+                activeAnswerValues.push_back(values);
+                activeQuestionIds.push_back(questionId);
+                restorePagedAnswerSelection(questionId, buttons, values);
+                y += 138;
+            }
+        }
+
+        string pageText = "Trang " + to_string(activeExamQuestionPage + 1) + "/" +
+                          to_string(activeExamQuestionPages.size());
+        centeredLabel(pageText, 570, 560, 110, 38, smallFont, THEME_MUTED);
+        if (activeExamQuestionPage > 0) {
+            button("Trang trước", 430, 560, 125, 38, ID_EXAM_PREVIOUS_PAGE);
+        }
+        if (activeExamQuestionPage + 1 < (int)activeExamQuestionPages.size()) {
+            defaultButton("Trang tiếp", 695, 560, 125, 38, ID_EXAM_NEXT_PAGE);
+        }
+        button("Về dashboard", 840, 560, 145, 38, ID_DASHBOARD);
+        defaultButton("Nộp bài", 1000, 560, 120, 38, ID_TAKE_EXAM_SUBMIT);
+        if (!answerOptions.empty()) {
+            SetFocus(answerOptions[0][0]);
+        }
+    }
+
+    void changeExamQuestionPage(int direction) {
+        Exam* exam = data.findExamById(activeExamId);
+        if (exam == nullptr || activeExamQuestionPages.empty()) {
+            return;
+        }
+        int nextPage = activeExamQuestionPage + direction;
+        if (nextPage < 0 || nextPage >= (int)activeExamQuestionPages.size()) {
+            return;
+        }
+        activeExamQuestionPage = nextPage;
+        renderPagedExamQuestions(*exam);
     }
 
     void openActiveExamAttachment() {
@@ -1120,13 +1384,6 @@
             return;
         }
 
-        auto now = chrono::steady_clock::now();
-        if (lastExamViolationAt != chrono::steady_clock::time_point{} &&
-            chrono::duration_cast<chrono::milliseconds>(now - lastExamViolationAt).count() < 750) {
-            return;
-        }
-        lastExamViolationAt = now;
-
         Exam* exam = data.findExamById(activeExamId);
         int violationLimit = exam == nullptr ? 3 : max(1, exam->getViolationLimit());
         examViolationCount++;
@@ -1136,11 +1393,6 @@
 
         if (examViolationCount >= violationLimit) {
             pendingExamAutoSubmit = true;
-            pendingExamViolationNotice = false;
-            if (examAppActive) {
-                showPendingExamViolationNotice();
-            }
-            return;
         }
 
         pendingExamViolationNotice = true;
@@ -1155,29 +1407,34 @@
             return;
         }
 
-        if (pendingExamAutoSubmit) {
-            pendingExamAutoSubmit = false;
-            pendingExamViolationNotice = false;
-            submitTakeExam(false, true);
-            return;
-        }
-
         if (!pendingExamViolationNotice) {
             return;
         }
 
         pendingExamViolationNotice = false;
+        bool autoSubmitAfterNotice = pendingExamAutoSubmit;
         Exam* exam = data.findExamById(activeExamId);
         int violationLimit = exam == nullptr ? 3 : max(1, exam->getViolationLimit());
         string warning = "Bạn vừa rời khỏi màn hình thi hoặc thực hiện thao tác bị hạn chế.\n\n"
                          "Số lần vi phạm: " + to_string(examViolationCount) + "/" +
-                         to_string(violationLimit) +
-                         "\nBài sẽ tự động nộp khi đạt giới hạn.";
+                         to_string(violationLimit);
+        if (autoSubmitAfterNotice) {
+            warning += "\nĐã đạt giới hạn. Bài sẽ tự động nộp sau khi bạn đóng cảnh báo.";
+        } else {
+            warning += "\nBài sẽ tự động nộp khi đạt giới hạn.";
+        }
         antiCheatDialogOpen = true;
         MessageBoxW(window, utf8ToWide(warning).c_str(),
                     L"Cảnh báo chống gian lận",
                     MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
         antiCheatDialogOpen = false;
+        examAppActive = true;
+
+        if (autoSubmitAfterNotice && currentScreen == SCREEN_TAKE_EXAM_FORM &&
+            !examSubmissionInProgress) {
+            pendingExamAutoSubmit = false;
+            submitTakeExam(false, true);
+        }
     }
 
     void interruptActiveExam(string reason) {
@@ -1219,6 +1476,17 @@
                 error("Bạn đã hết lượt làm bài cho đề này. Số lượt tối đa: " + to_string(exam->getAttemptLimit()) + ".");
                 return;
             }
+            if (!exam->isFileAnswerExam()) {
+                vector<Question*> resolvedQuestions;
+                string questionValidationError;
+                if (!data.resolveExamQuestions(*exam, resolvedQuestions,
+                                               questionValidationError)) {
+                    error("Đề thi đang bị thiếu hoặc trùng câu hỏi nên chưa thể bắt đầu.\r\n" +
+                          questionValidationError +
+                          "\r\nVui lòng báo giáo viên sửa đề.");
+                    return;
+                }
+            }
             string sessionId;
             string sessionError;
             if (!data.startExamSession(currentUser, *exam, sessionId, sessionError)) {
@@ -1228,7 +1496,6 @@
             showTakeExamForm(*exam);
             activeSessionId = sessionId;
             examViolationCount = 0;
-            lastExamViolationAt = chrono::steady_clock::time_point{};
             return;
         }
 
@@ -1287,6 +1554,7 @@
     }
 
     bool collectSelectedAnswers(map<string, char>& answers, bool requireAll) {
+        answers = activeExamDraftAnswers;
         if (!answerCombos.empty()) {
             for (int i = 0; i < (int)answerCombos.size() && i < (int)activeQuestionIds.size(); i++) {
                 int selectedIndex = (int)SendMessageW(answerCombos[i], CB_GETCURSEL, 0, 0);

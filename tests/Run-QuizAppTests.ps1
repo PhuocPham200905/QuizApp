@@ -538,13 +538,20 @@ function Test-AntiCheatAltTab {
     $warnings = [System.Collections.Generic.List[string]]::new()
     $focusTarget = $null
     try {
-        $focusTarget = Start-Process cmd.exe -ArgumentList "/k", "title QuizApp Focus Target" -PassThru
-        Start-Sleep -Milliseconds 700
+        $focusTarget = New-Object System.Windows.Forms.Form
+        $focusTarget.Text = "QuizApp Focus Target"
+        $focusTarget.Width = 420
+        $focusTarget.Height = 180
+        $focusTarget.StartPosition = "CenterScreen"
+        $focusTarget.Show()
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Milliseconds 300
 
-        for ($cycle = 1; $cycle -le 2; $cycle++) {
+        for ($cycle = 1; $cycle -le 3; $cycle++) {
             [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
             Start-Sleep -Milliseconds 350
-            [Microsoft.VisualBasic.Interaction]::AppActivate("QuizApp Focus Target") | Out-Null
+            [QuizAppTestInterop]::SetForegroundWindow($focusTarget.Handle) | Out-Null
+            [System.Windows.Forms.Application]::DoEvents()
             Start-Sleep -Milliseconds 500
             [Microsoft.VisualBasic.Interaction]::AppActivate($script:activeProcess.Id) | Out-Null
 
@@ -574,14 +581,18 @@ function Test-AntiCheatAltTab {
         }
     }
     finally {
-        if ($focusTarget -and -not $focusTarget.HasExited) {
-            Stop-Process -Id $focusTarget.Id -Force -ErrorAction SilentlyContinue
+        if ($focusTarget) {
+            $focusTarget.Close()
+            $focusTarget.Dispose()
         }
     }
 
     $firstPassed = $warnings.Count -ge 1 -and $warnings[0].Contains("1/3")
     $secondPassed = $warnings.Count -ge 2 -and $warnings[1].Contains("2/3")
-    Add-TestResult "Học sinh" "Alt+Tab liên tiếp" ($firstPassed -and $secondPassed) (
+    $thirdPassed = $warnings.Count -ge 3 -and $warnings[2].Contains("3/3")
+    Add-TestResult "Học sinh" "Alt+Tab liên tiếp" (
+        $firstPassed -and $secondPassed -and $thirdPassed
+    ) (
         $warnings -join "; "
     )
     Invoke-AppCommand 1050 450

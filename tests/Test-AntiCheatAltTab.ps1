@@ -4,7 +4,7 @@ param(
     [string]$StudentPassword = "123456",
     [string]$ExamId = "e1",
     [string]$ExamPassword = "oop123",
-    [int]$Cycles = 2
+    [int]$Cycles = 3
 )
 
 $ErrorActionPreference = "Stop"
@@ -160,15 +160,22 @@ try {
     [AntiCheatTestInterop]::PostMessage($quiz.MainWindowHandle, 0x0111, [IntPtr]1004, [IntPtr]0) | Out-Null
     Start-Sleep -Seconds 1
 
+    $other = Start-Process notepad.exe -PassThru
+    Wait-MainWindow $other
+    [Microsoft.VisualBasic.Interaction]::AppActivate($quiz.Id) | Out-Null
+    Start-Sleep -Milliseconds 400
+
     [AntiCheatTestInterop]::PostMessage($quiz.MainWindowHandle, 0x0111, [IntPtr]1026, [IntPtr]0) | Out-Null
     Start-Sleep -Milliseconds 700
     [AntiCheatTestInterop]::SetControlText($quiz.MainWindowHandle, 5201, $ExamId) | Out-Null
     [AntiCheatTestInterop]::SetControlText($quiz.MainWindowHandle, 5202, $ExamPassword) | Out-Null
     [AntiCheatTestInterop]::PostMessage($quiz.MainWindowHandle, 0x0111, [IntPtr]1041, [IntPtr]0) | Out-Null
     Start-Sleep -Seconds 1
+    $examScreenText = [AntiCheatTestInterop]::ChildText($quiz.MainWindowHandle)
+    if ($examScreenText -notmatch "L.m b.i:") {
+        throw "Không mở được màn hình làm bài. Nội dung hiện tại: $examScreenText"
+    }
 
-    $other = Start-Process notepad.exe -PassThru
-    Wait-MainWindow $other
     $results = @()
 
     for ($cycle = 1; $cycle -le $Cycles; $cycle++) {
@@ -194,13 +201,17 @@ try {
             WarningShown = $true
             Text = $text
         }
+        if ($text -notmatch "$cycle/\d+") {
+            throw "Cảnh báo lần $cycle không hiển thị đúng số lần vi phạm. Nội dung: $text"
+        }
         [AntiCheatTestInterop]::PostMessage($dialog, 0x0010, [IntPtr]0, [IntPtr]0) | Out-Null
         Start-Sleep -Milliseconds 500
     }
 
     $results
     if (@($results | Where-Object { -not $_.WarningShown }).Count -gt 0) {
-        exit 1
+        $details = $results | ConvertTo-Json -Compress
+        throw "Thiếu cảnh báo Alt+Tab. Kết quả: $details"
     }
 }
 finally {
