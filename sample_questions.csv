@@ -1,11 +1,11 @@
 ﻿content,optionA,optionB,optionC,optionD,correctAnswer,difficulty
-"Trong lập trình hướng đối tượng, class được dùng để làm gì?","Mô tả khuôn mẫu để tạo đối tượng","Chạy chương trình nhanh hơn","Lưu tệp trên máy tính","Kết nối Internet",A,"Dễ"
-"Từ khóa nào được dùng để khai báo một lớp trong C++?","object","class","define","include",B,"Dễ"
-"Hàm nào được gọi tự động khi một đối tượng được tạo?","Destructor","Constructor","Getter","Setter",B,"Dễ"
-"Trong C++, thư viện nào thường được dùng để làm việc với vector?","<map>","<array>","<vector>","<queue>",C,"Dễ"
-"Lợi ích chính của tính đóng gói là gì?","Ẩn dữ liệu và kiểm soát cách truy cập","Xóa toàn bộ biến","Bắt buộc dùng biến toàn cục","Thay thế constructor",A,"Trung bình"
-"Tính kế thừa giúp lập trình viên làm gì?","Tái sử dụng và mở rộng lớp có sẵn","Mã hóa mật khẩu","Tạo kết nối mạng","Xóa mọi đối tượng",A,"Trung bình"
-"Từ khóa nào thường được dùng để hỗ trợ đa hình lúc chạy trong C++?","static","virtual","const","extern",B,"Trung bình"
-"Tên destructor của lớp Student được viết như thế nào?","delete Student()","!Student()","~Student()","destroy Student()",C,"Dễ"
-"Từ khóa this bên trong phương thức thành viên trỏ đến đâu?","Lớp cha","Đối tượng hiện tại","Hàm main","Biến toàn cục",B,"Trung bình"
-"Khai báo nào biểu diễn một hàm thuần ảo trong C++?","virtual void draw();","void draw() = 1;","virtual void draw() = 0;","abstract void draw();",C,"Khó"
+"Trong lập trình hướng đối tượng, class được dùng để làm gì?",Mô tả khuôn mẫu để tạo đối tượng,Chạy chương trình nhanh hơn,Lưu tệp trên máy tính,Kết nối Internet,A,Dễ
+Từ khóa nào được dùng để khai báo một lớp trong C++?,object,class,define,include,B,Dễ
+Hàm nào được gọi tự động khi một đối tượng được tạo?,Destructor,Constructor,Getter,Setter,B,Dễ
+"Trong C++, thư viện nào thường được dùng để làm việc với vector?",<map>,<array>,<vector>,<queue>,C,Dễ
+Lợi ích chính của tính đóng gói là gì?,Ẩn dữ liệu và kiểm soát cách truy cập,Xóa toàn bộ biến,Bắt buộc dùng biến toàn cục,Thay thế constructor,A,Trung bình
+Tính kế thừa giúp lập trình viên làm gì?,Tái sử dụng và mở rộng lớp có sẵn,Mã hóa mật khẩu,Tạo kết nối mạng,Xóa mọi đối tượng,A,Trung bình
+Từ khóa nào thường được dùng để hỗ trợ đa hình lúc chạy trong C++?,static,virtual,const,extern,B,Trung bình
+Tên destructor của lớp Student được viết như thế nào?,delete Student(),!Student(),~Student(),destroy Student(),C,Dễ
+Từ khóa this bên trong phương thức thành viên trỏ đến đâu?,Lớp cha,Đối tượng hiện tại,Hàm main,Biến toàn cục,B,Trung bình
+Khai báo nào biểu diễn một hàm thuần ảo trong C++?,virtual void draw();,void draw() = 1;,virtual void draw() = 0;,abstract void draw();,C,Khó

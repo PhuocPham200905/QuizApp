@@ -303,6 +303,10 @@ public:
     }
 
     bool downloadTextFromUrl(string url, string& output) {
+        if (isCloudExamAttachmentUrl(url)) {
+            return downloadExamAttachmentFromFirestore(url, output);
+        }
+
         if (!firebase.getRawUrl(url, output)) {
             connectedToFirebase = false;
             firebaseStatus = "Không tải được dữ liệu từ URL.\r\n" + firebase.getLastError();
@@ -393,6 +397,123 @@ public:
         return targetPath;
     }
 
+    bool isCloudExamAttachmentUrl(string url) const {
+        return url.rfind(cloudAttachmentPrefix(), 0) == 0;
+    }
+
+    bool uploadExamAttachmentToFirestore(string examId, string sourcePath, string& attachmentUrl) {
+        attachmentUrl.clear();
+        trimInPlace(sourcePath);
+        if (sourcePath.empty()) {
+            return true;
+        }
+        if (shouldSkipFirebase()) {
+            return true;
+        }
+
+        ifstream input(sourcePath, ios::binary);
+        if (!input) {
+            firebaseStatus = "Khong doc duoc file de de tai len Firestore.";
+            return false;
+        }
+
+        input.seekg(0, ios::end);
+        streamoff fileSize = input.tellg();
+        input.seekg(0, ios::beg);
+        if (fileSize <= 0) {
+            firebaseStatus = "File de dang rong nen khong the dong bo.";
+            return false;
+        }
+        const streamoff maxCloudFileSize = 15 * 1024 * 1024;
+        if (fileSize > maxCloudFileSize) {
+            firebaseStatus = "File de qua lon de luu truc tiep len Firestore. Vui long dung file toi da 15 MB.";
+            return false;
+        }
+
+        string bytes((istreambuf_iterator<char>(input)), istreambuf_iterator<char>());
+        string encoded = base64Encode(bytes);
+        const size_t chunkSize = 180000;
+        int chunkCount = (int)((encoded.size() + chunkSize - 1) / chunkSize);
+        string extension = fileExtension(sourcePath);
+        if (extension.empty()) {
+            extension = ".bin";
+        }
+
+        for (int index = 0; index < chunkCount; index++) {
+            size_t offset = (size_t)index * chunkSize;
+            json fields;
+            fields["examId"] = firebase.stringValue(examId);
+            fields["index"] = firebase.intValue(index);
+            fields["data"] = firebase.stringValue(encoded.substr(offset, chunkSize));
+            if (!firebase.setDocument("examFileChunks", cloudAttachmentChunkId(examId, index), fields)) {
+                connectedToFirebase = false;
+                firebaseStatus = "Khong tai duoc file de len Firestore.\r\n" + firebase.getLastError();
+                return false;
+            }
+        }
+
+        json metaFields;
+        metaFields["examId"] = firebase.stringValue(examId);
+        metaFields["extension"] = firebase.stringValue(extension);
+        metaFields["sizeBytes"] = firebase.intValue((int)fileSize);
+        metaFields["chunkCount"] = firebase.intValue(chunkCount);
+        metaFields["updatedAt"] = firebase.stringValue(currentTimeText());
+        if (!firebase.setDocument("examFiles", examId, metaFields)) {
+            connectedToFirebase = false;
+            firebaseStatus = "Khong luu duoc thong tin file de len Firestore.\r\n" + firebase.getLastError();
+            return false;
+        }
+
+        attachmentUrl = cloudAttachmentPrefix() + examId + extension;
+        connectedToFirebase = true;
+        firebaseStatus = "Da dong bo file de len Firestore.";
+        return true;
+    }
+
+    bool downloadExamAttachmentFromFirestore(string attachmentUrl, string& output) {
+        output.clear();
+        string examId = cloudAttachmentExamId(attachmentUrl);
+        if (examId.empty()) {
+            firebaseStatus = "Duong dan file de noi bo khong hop le.";
+            return false;
+        }
+
+        json metaDocument;
+        if (!firebase.getDocument("examFiles", examId, metaDocument) ||
+            !metaDocument.contains("fields")) {
+            connectedToFirebase = false;
+            firebaseStatus = "Khong tim thay file de tren Firestore.\r\n" + firebase.getLastError();
+            return false;
+        }
+
+        int chunkCount = firebase.intField(metaDocument["fields"], "chunkCount", 0);
+        if (chunkCount <= 0) {
+            firebaseStatus = "File de tren Firestore khong co du lieu.";
+            return false;
+        }
+
+        string encoded;
+        for (int index = 0; index < chunkCount; index++) {
+            json chunkDocument;
+            if (!firebase.getDocument("examFileChunks", cloudAttachmentChunkId(examId, index), chunkDocument) ||
+                !chunkDocument.contains("fields")) {
+                connectedToFirebase = false;
+                firebaseStatus = "Khong tai du cac manh file de tu Firestore.\r\n" + firebase.getLastError();
+                return false;
+            }
+            encoded += firebase.stringField(chunkDocument["fields"], "data");
+        }
+
+        if (!base64Decode(encoded, output)) {
+            firebaseStatus = "File de tai ve bi loi ma hoa.";
+            return false;
+        }
+
+        connectedToFirebase = true;
+        firebaseStatus = "Da tai file de tu Firestore.";
+        return true;
+    }
+
     string prepareQuestionImage(string questionId, string sourcePath) {
         trimInPlace(sourcePath);
         if (sourcePath.empty()) {
@@ -420,6 +541,85 @@ public:
             return "";
         }
         return path.substr(dot);
+    }
+
+    string cloudAttachmentPrefix() const {
+        return "quizapp-firestore://exam-files/";
+    }
+
+    string cloudAttachmentChunkId(string examId, int index) const {
+        stringstream id;
+        id << examId << "_chunk_" << setw(4) << setfill('0') << index << setfill(' ');
+        return id.str();
+    }
+
+    string cloudAttachmentExamId(string attachmentUrl) const {
+        if (attachmentUrl.rfind(cloudAttachmentPrefix(), 0) != 0) {
+            return "";
+        }
+        string value = attachmentUrl.substr(cloudAttachmentPrefix().size());
+        size_t slash = value.find_last_of('/');
+        if (slash != string::npos) {
+            value = value.substr(slash + 1);
+        }
+        size_t dot = value.find_last_of('.');
+        if (dot != string::npos) {
+            value = value.substr(0, dot);
+        }
+        return value;
+    }
+
+    string base64Encode(const string& bytes) const {
+        static const char table[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        string output;
+        output.reserve(((bytes.size() + 2) / 3) * 4);
+
+        for (size_t index = 0; index < bytes.size(); index += 3) {
+            unsigned int value = ((unsigned char)bytes[index]) << 16;
+            if (index + 1 < bytes.size()) {
+                value |= ((unsigned char)bytes[index + 1]) << 8;
+            }
+            if (index + 2 < bytes.size()) {
+                value |= (unsigned char)bytes[index + 2];
+            }
+
+            output.push_back(table[(value >> 18) & 0x3F]);
+            output.push_back(table[(value >> 12) & 0x3F]);
+            output.push_back(index + 1 < bytes.size() ? table[(value >> 6) & 0x3F] : '=');
+            output.push_back(index + 2 < bytes.size() ? table[value & 0x3F] : '=');
+        }
+
+        return output;
+    }
+
+    bool base64Decode(const string& text, string& bytes) const {
+        static const string table =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        bytes.clear();
+        int value = 0;
+        int bits = -8;
+
+        for (unsigned char character : text) {
+            if (isspace(character)) {
+                continue;
+            }
+            if (character == '=') {
+                break;
+            }
+            size_t position = table.find((char)character);
+            if (position == string::npos) {
+                return false;
+            }
+            value = (value << 6) + (int)position;
+            bits += 6;
+            if (bits >= 0) {
+                bytes.push_back((char)((value >> bits) & 0xFF));
+                bits -= 8;
+            }
+        }
+
+        return true;
     }
 
     vector<string> stringsFromChars(vector<char> values) {
@@ -492,6 +692,10 @@ public:
                  int violationLimit, bool shuffleQuestions, bool shuffleAnswers) {
         string examId = createExamId();
         string attachmentPath = prepareExamAttachment(examId, attachmentSourcePath);
+        if (attachmentUrl.empty() && !attachmentPath.empty() &&
+            !uploadExamAttachmentToFirestore(examId, attachmentPath, attachmentUrl)) {
+            return false;
+        }
         if (!saveExamToFirebase(examId, title, duration, questionIds, createdBy, startAt, closeAt,
                                 examPassword, attachmentPath, attachmentUrl, answerKey,
                                 attemptLimit, violationLimit, shuffleQuestions,

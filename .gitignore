@@ -17,9 +17,20 @@ cmake_install.cmake
 release/
 release-clean/
 
+# App package intentionally kept on main for handoff/demo
+!app/
+!app/*.zip
+
 # Generated test reports and temporary files
 test-results/
 text.csv
+
+# Local document review/generated folders
+.docx-review/
+docx_images_*/
+docx_preview/
+docx_render_*/
+docx_shape_previews/
 
 # Firebase secrets
 .env

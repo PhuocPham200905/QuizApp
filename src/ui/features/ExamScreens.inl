@@ -74,12 +74,33 @@
         label("File đề", 290, 491, 170, 26);
         edit("", 500, 487, 280, 30, 5007);
         button("Chọn file", 795, 487, 110, 32, ID_CREATE_EXAM_CHOOSE_FILE);
-        label("Link file đề (dùng đa máy)", 290, 529, 195, 26);
-        edit("", 500, 525, 405, 30, 5008);
-        label("Nên dùng URL tải công khai nếu học sinh làm trên máy khác.", 920, 529, 300, 26);
+        label("File đề sẽ tự đồng bộ để máy khác tải được.", 500, 525, 430, 26);
         defaultButton("Tạo đề", 500, 585, 120, 38, ID_CREATE_EXAM_SUBMIT);
         button("Về dashboard", 635, 585, 150, 38, ID_DASHBOARD);
         setFocusTo(5001);
+    }
+
+    void setShuffleControlsEnabled(int questionShuffleId, int answerShuffleId, bool enabled) {
+        HWND questionShuffle = GetDlgItem(window, questionShuffleId);
+        HWND answerShuffle = GetDlgItem(window, answerShuffleId);
+        if (!enabled) {
+            if (questionShuffle != nullptr) {
+                SendMessageW(questionShuffle, BM_SETCHECK, BST_UNCHECKED, 0);
+            }
+            if (answerShuffle != nullptr) {
+                SendMessageW(answerShuffle, BM_SETCHECK, BST_UNCHECKED, 0);
+            }
+        }
+        if (questionShuffle != nullptr) {
+            EnableWindow(questionShuffle, enabled ? TRUE : FALSE);
+        }
+        if (answerShuffle != nullptr) {
+            EnableWindow(answerShuffle, enabled ? TRUE : FALSE);
+        }
+    }
+
+    void disableCreateExamShuffleForFileExam() {
+        setShuffleControlsEnabled(5011, 5012, false);
     }
 
     void submitCreateExam() {
@@ -90,7 +111,7 @@
         string examPassword = getText(5005);
         string startAt = getText(5006);
         string attachmentPath = getText(5007);
-        string attachmentUrl = getText(5008);
+        string attachmentUrl;
         string answerKeyText = getText(5009);
         string attemptLimitText = getText(5010);
         string violationLimitText = getText(5013);
@@ -153,26 +174,22 @@
             error("Nhap Mã câu hỏi tu ngan hang hoac nhap Đáp án file đề, vi du: A C B B A.");
             return;
         }
-        if (validIds.empty() && attachmentPath.empty() && attachmentUrl.empty()) {
-            error("De file goc can chon File đề hoac nhap Link file đề.");
+        if (validIds.empty() && attachmentPath.empty()) {
+            error("De file goc can chon File đề.");
             return;
         }
+        if (!answerKey.empty()) {
+            shuffleQuestions = false;
+            shuffleAnswers = false;
+        }
 
-        bool localFileOnly = !attachmentPath.empty() && attachmentUrl.empty();
         if (!data.addExam(title, duration, validIds, answerKey, currentUser->getUserId(),
                           startAt, closeAt, examPassword, attachmentPath, attachmentUrl,
                           attemptLimit, violationLimit, shuffleQuestions, shuffleAnswers)) {
             error(data.getFirebaseStatus());
             return;
         }
-        if (localFileOnly) {
-            message("Đã tạo đề thi.\r\n\r\n"
-                    "Lưu ý: file hiện chỉ mở được trên máy giáo viên. "
-                    "Hãy thêm Link file đề công khai trong Quản lý đề thi "
-                    "để học sinh dùng máy khác có thể mở.");
-        } else {
-            message("Đã tạo đề thi.");
-        }
+        message("Đã tạo đề thi.");
         showTeacherDashboard();
     }
 
@@ -266,9 +283,6 @@
         edit("", 405, 481, 220, 30, 6306);
         label("Để trống nếu không dùng mật khẩu", 640, 485, 270, 26);
 
-        label("Link file đề", 280, 525, 120, 26);
-        edit("", 405, 521, 605, 30, 6313);
-
         defaultButton("Lưu thay đổi", 465, 565, 150, 36, ID_UPDATE_EXAM_SUBMIT);
         button("Xóa đề", 630, 565, 120, 36, ID_DELETE_EXAM_SUBMIT);
         button("Về dashboard", 765, 565, 150, 36, ID_DASHBOARD);
@@ -303,11 +317,11 @@
         setControlText(GetDlgItem(window, 6312), to_string(exam->getViolationLimit()));
         setControlText(GetDlgItem(window, 6308), questionIds.str());
         setControlText(GetDlgItem(window, 6309), answerKey.str());
-        setControlText(GetDlgItem(window, 6313), exam->getAttachmentUrl());
         SendMessageW(GetDlgItem(window, 6310), BM_SETCHECK,
                      exam->shouldShuffleQuestions() ? BST_CHECKED : BST_UNCHECKED, 0);
         SendMessageW(GetDlgItem(window, 6311), BM_SETCHECK,
                      exam->shouldShuffleAnswers() ? BST_CHECKED : BST_UNCHECKED, 0);
+        setShuffleControlsEnabled(6310, 6311, !exam->isFileAnswerExam());
     }
 
     void submitUpdateExam() {
@@ -317,7 +331,8 @@
         string startAt = getText(6304);
         string closeAt = getText(6305);
         string examPassword = getText(6306);
-        string attachmentUrl = getText(6313);
+        Exam* existingExam = data.findExamById(examId);
+        string attachmentUrl = existingExam == nullptr ? "" : existingExam->getAttachmentUrl();
         int attemptLimit = atoi(getText(6307).c_str());
         int violationLimit = atoi(getText(6312).c_str());
         string questionIdsText = getText(6308);
@@ -356,6 +371,10 @@
         if (validIds.empty() && answerKey.empty()) {
             error("Đề thi cần có mã câu hỏi hoặc đáp án file đề.");
             return;
+        }
+        if (!answerKey.empty()) {
+            shuffleQuestions = false;
+            shuffleAnswers = false;
         }
 
         if (!data.updateExamDetails(examId, currentUser->getUserId(), examTitle, duration,
@@ -959,6 +978,7 @@
         if (localExamFileExists(exam->getAttachmentPath())) {
             target = exam->getAttachmentPath();
         } else if (!exam->getAttachmentUrl().empty()) {
+            bool cloudAttachment = data.isCloudExamAttachmentUrl(exam->getAttachmentUrl());
             string cachedPath = cachedExamAttachmentPath(*exam);
             if (!cachedPath.empty() && localExamFileExists(cachedPath)) {
                 target = cachedPath;
@@ -966,15 +986,19 @@
                 SetCursor(LoadCursor(nullptr, IDC_WAIT));
                 bool downloaded = downloadExamAttachment(*exam, cachedPath);
                 SetCursor(LoadCursor(nullptr, IDC_ARROW));
-                target = downloaded ? cachedPath : exam->getAttachmentUrl();
-            } else {
+                if (downloaded) {
+                    target = cachedPath;
+                } else if (!cloudAttachment) {
+                    target = exam->getAttachmentUrl();
+                }
+            } else if (!cloudAttachment) {
                 target = exam->getAttachmentUrl();
             }
         }
 
         if (target.empty()) {
-            error("File đề chỉ tồn tại trên máy giáo viên và đề chưa có URL dùng chung.\r\n"
-                  "Giáo viên cần vào Quản lý đề thi và thêm Link file đề công khai.");
+            error("Không tải được file đề dùng chung.\r\n"
+                  "Vui lòng kiểm tra kết nối mạng hoặc tạo lại đề với file đính kèm.");
             return;
         }
 
@@ -1029,7 +1053,7 @@
 
         if (!exam.getAttachmentPath().empty() && localPath.empty() && url.empty()) {
             label("File đề đang nằm trên máy giáo viên nên máy này không thể mở.", x + 20, y + 30, w - 40, 26);
-            label("Giáo viên cần thêm Link file đề công khai trong Quản lý đề thi.", x + 20, y + 62, w - 40, 26);
+            label("Giáo viên cần tạo lại đề để app tự đồng bộ file lên Firestore.", x + 20, y + 62, w - 40, 26);
             return;
         }
 

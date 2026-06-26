@@ -44,31 +44,27 @@
         edit(aiQuestionRequest.extraNotes, x + 455, y - 4,
              max(180, panelWidth - 455), 30, 8506);
 
-        int keyInputWidth = max(220, panelWidth - 390);
-        label("Groq API key", x, y + 43, 95, 26);
-        edit("", x + 100, y + 39, keyInputWidth, 30, 8510, true);
-        button("Lưu key", x + 110 + keyInputWidth, y + 38, 105, 34, ID_AI_SAVE_API_KEY);
-        button("Xóa key", x + 225 + keyInputWidth, y + 38, 95, 34, ID_AI_CLEAR_API_KEY);
+        int actionY = y + 42;
 
-        defaultButton("Sinh câu hỏi", x, y + 80, 130, 34, ID_AI_GENERATE_QUESTIONS);
-        button("Cập nhật preview", x + 140, y + 80, 140, 34, ID_AI_REFRESH_PREVIEW);
-        button("Lưu tất cả", x + 290, y + 80, 105, 34, ID_AI_SAVE_ALL);
-        label("Câu số", x + 405, y + 85, 58, 24);
-        edit("1", x + 465, y + 82, 45, 30, 8507);
-        button("Lưu 1 câu", x + 520, y + 80, 105, 34, ID_AI_SAVE_ONE);
-        button("Quay lại", x + 635, y + 80, 85, 34, ID_DASHBOARD);
+        defaultButton("Sinh câu hỏi", x, actionY, 130, 34, ID_AI_GENERATE_QUESTIONS);
+        button("Cập nhật preview", x + 140, actionY, 140, 34, ID_AI_REFRESH_PREVIEW);
+        button("Lưu tất cả", x + 290, actionY, 105, 34, ID_AI_SAVE_ALL);
+        label("Câu số", x + 405, actionY + 5, 58, 24);
+        edit("1", x + 465, actionY + 2, 45, 30, 8507);
+        button("Lưu 1 câu", x + 520, actionY, 105, 34, ID_AI_SAVE_ONE);
+        button("Quay lại", x + 635, actionY, 85, 34, ID_DASHBOARD);
 
         string status = aiQuestionStatus.empty()
                             ? aiQuestionService.configurationStatus() +
                                   " Hỗ trợ bàn phím tiếng Việt Telex/VNI của Windows."
                             : aiQuestionStatus;
-        edit(status, x, y + 122, panelWidth, 38, 8508, false, true, true);
+        edit(status, x, actionY + 42, panelWidth, 38, 8508, false, true, true);
 
-        aiQuestionDraftListView(x, y + 168, panelWidth, 125);
+        aiQuestionDraftListView(x, actionY + 88, panelWidth, 125);
 
-        label("JSON có thể chỉnh sửa", x, y + 302, 210, 24);
+        label("JSON có thể chỉnh sửa", x, actionY + 222, 210, 24);
         edit(aiQuestionService.draftsToJson(generatedQuestionDrafts),
-             x, y + 328, panelWidth, 82, 8509, false, true, false);
+             x, actionY + 248, panelWidth, 82, 8509, false, true, false);
         setFocusTo(8503);
     }
 
@@ -507,6 +503,7 @@
         if (pathEdit != nullptr) {
             setControlText(pathEdit, wideToUtf8(fileName));
         }
+        disableCreateExamShuffleForFileExam();
     }
 
     void chooseQuestionImage() {
